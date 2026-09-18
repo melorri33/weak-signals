@@ -2,7 +2,7 @@
 
 Признаки идут тем же путём, что и в конвейере: статистика термина → TermStats → features.compute → vectorize.
 Статистика для обучающей выборки берётся из кэшей экспериментов (notebooks/01, 02):
-  data/openalex_years.json    — публикации OpenAlex по годам
+  data/openalex_years_phrase.json — публикации OpenAlex по годам (поиск точной фразы)
   data/attention_stats.json   — Hacker News по годам (медиа), наличие статьи в Википедии
 
 Запуск: python -m src.model.train
@@ -52,7 +52,7 @@ CATBOOST_PARAMS = {
 
 def load_term_stats() -> dict[str, TermStats]:
     """Собрать TermStats по терминам обучающей выборки из кэшей экспериментов."""
-    pubs = json.loads((DATA / "openalex_years.json").read_text(encoding="utf-8"))
+    pubs = json.loads((DATA / "openalex_years_phrase.json").read_text(encoding="utf-8"))
     attention = json.loads((DATA / "attention_stats.json").read_text(encoding="utf-8"))
     stats = {}
     for term, years in pubs.items():
