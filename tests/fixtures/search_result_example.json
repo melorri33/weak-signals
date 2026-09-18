@@ -1,0 +1,257 @@
+{
+  "run_id": "example-run",
+  "query": "перспективные решения в финтехе",
+  "status": "done",
+  "stage": "done",
+  "expanded_phrases": [
+    "ПРИМЕР: фраза 1",
+    "example phrase 2"
+  ],
+  "documents_processed": 412,
+  "candidates_found": 48,
+  "confident_signals": 2,
+  "top": [
+    {
+      "candidate_id": "example-tech-1",
+      "name": "Example technology 1",
+      "name_ru": "Пример технологии 1",
+      "score": 0.91,
+      "description": "ПРИМЕР: что это за технология, 2–3 предложения.",
+      "advantage": "ПРИМЕР: какое преимущество даёт.",
+      "case_example": "ПРИМЕР: где уже пробуют применять.",
+      "why_weak_signal": "ПРИМЕР: почему это ранний сигнал, а не зрелый тренд.",
+      "top_reasons": [
+        {
+          "feature": "growth_3y",
+          "value": 0.62,
+          "contribution": 0.21,
+          "text": "ПРИМЕР: публикации растут на 62% в год"
+        },
+        {
+          "feature": "news_to_science_ratio",
+          "value": 0.1,
+          "contribution": 0.12,
+          "text": "ПРИМЕР: мало новостей относительно науки"
+        },
+        {
+          "feature": "has_standard",
+          "value": "нет",
+          "contribution": 0.08,
+          "text": "ПРИМЕР: стандартов пока нет"
+        }
+      ],
+      "sources": [
+        {
+          "document_id": "example:1",
+          "title": "ПРИМЕР: название источника 1",
+          "url": "https://example.org/doc/1",
+          "published": "2025-11-01",
+          "source_type": "paper",
+          "language": "en",
+          "trust": "high",
+          "ru_summary": "ПРИМЕР: краткое резюме на русском.",
+          "summary_is_generated": true,
+          "is_machine_translated": true
+        },
+        {
+          "document_id": "example:2",
+          "title": "ПРИМЕР: название источника 2",
+          "url": "https://example.org/doc/2",
+          "published": "2025-11-02",
+          "source_type": "patent",
+          "language": "ru",
+          "trust": "high",
+          "ru_summary": null,
+          "summary_is_generated": false,
+          "is_machine_translated": false
+        },
+        {
+          "document_id": "example:3",
+          "title": "ПРИМЕР: название источника 3",
+          "url": "https://example.org/doc/3",
+          "published": "2025-11-03",
+          "source_type": "news",
+          "language": "en",
+          "trust": "medium",
+          "ru_summary": "ПРИМЕР: краткое резюме на русском.",
+          "summary_is_generated": true,
+          "is_machine_translated": true
+        }
+      ],
+      "report_md": null
+    },
+    {
+      "candidate_id": "example-tech-2",
+      "name": "Example technology 2",
+      "name_ru": "Пример технологии 2",
+      "score": 0.84,
+      "description": "ПРИМЕР: что это за технология, 2–3 предложения.",
+      "advantage": "ПРИМЕР: какое преимущество даёт.",
+      "case_example": "ПРИМЕР: где уже пробуют применять.",
+      "why_weak_signal": "ПРИМЕР: почему это ранний сигнал, а не зрелый тренд.",
+      "top_reasons": [
+        {
+          "feature": "growth_3y",
+          "value": 0.62,
+          "contribution": 0.21,
+          "text": "ПРИМЕР: публикации растут на 62% в год"
+        },
+        {
+          "feature": "news_to_science_ratio",
+          "value": 0.1,
+          "contribution": 0.12,
+          "text": "ПРИМЕР: мало новостей относительно науки"
+        },
+        {
+          "feature": "has_standard",
+          "value": "нет",
+          "contribution": 0.08,
+          "text": "ПРИМЕР: стандартов пока нет"
+        }
+      ],
+      "sources": [
+        {
+          "document_id": "example:1",
+          "title": "ПРИМЕР: название источника 1",
+          "url": "https://example.org/doc/1",
+          "published": "2025-11-01",
+          "source_type": "paper",
+          "language": "en",
+          "trust": "high",
+          "ru_summary": "ПРИМЕР: краткое резюме на русском.",
+          "summary_is_generated": true,
+          "is_machine_translated": true
+        },
+        {
+          "document_id": "example:2",
+          "title": "ПРИМЕР: название источника 2",
+          "url": "https://example.org/doc/2",
+          "published": "2025-11-02",
+          "source_type": "patent",
+          "language": "ru",
+          "trust": "high",
+          "ru_summary": null,
+          "summary_is_generated": false,
+          "is_machine_translated": false
+        },
+        {
+          "document_id": "example:3",
+          "title": "ПРИМЕР: название источника 3",
+          "url": "https://example.org/doc/3",
+          "published": "2025-11-03",
+          "source_type": "news",
+          "language": "en",
+          "trust": "medium",
+          "ru_summary": "ПРИМЕР: краткое резюме на русском.",
+          "summary_is_generated": true,
+          "is_machine_translated": true
+        }
+      ],
+      "report_md": null
+    },
+    {
+      "candidate_id": "example-tech-3",
+      "name": "Example technology 3",
+      "name_ru": "Пример технологии 3",
+      "score": 0.71,
+      "description": "ПРИМЕР: что это за технология, 2–3 предложения.",
+      "advantage": "ПРИМЕР: какое преимущество даёт.",
+      "case_example": "ПРИМЕР: где уже пробуют применять.",
+      "why_weak_signal": "ПРИМЕР: почему это ранний сигнал, а не зрелый тренд.",
+      "top_reasons": [
+        {
+          "feature": "growth_3y",
+          "value": 0.62,
+          "contribution": 0.21,
+          "text": "ПРИМЕР: публикации растут на 62% в год"
+        },
+        {
+          "feature": "news_to_science_ratio",
+          "value": 0.1,
+          "contribution": 0.12,
+          "text": "ПРИМЕР: мало новостей относительно науки"
+        },
+        {
+          "feature": "has_standard",
+          "value": "нет",
+          "contribution": 0.08,
+          "text": "ПРИМЕР: стандартов пока нет"
+        }
+      ],
+      "sources": [
+        {
+          "document_id": "example:1",
+          "title": "ПРИМЕР: название источника 1",
+          "url": "https://example.org/doc/1",
+          "published": "2025-11-01",
+          "source_type": "paper",
+          "language": "en",
+          "trust": "high",
+          "ru_summary": "ПРИМЕР: краткое резюме на русском.",
+          "summary_is_generated": true,
+          "is_machine_translated": true
+        },
+        {
+          "document_id": "example:2",
+          "title": "ПРИМЕР: название источника 2",
+          "url": "https://example.org/doc/2",
+          "published": "2025-11-02",
+          "source_type": "patent",
+          "language": "ru",
+          "trust": "high",
+          "ru_summary": null,
+          "summary_is_generated": false,
+          "is_machine_translated": false
+        },
+        {
+          "document_id": "example:3",
+          "title": "ПРИМЕР: название источника 3",
+          "url": "https://example.org/doc/3",
+          "published": "2025-11-03",
+          "source_type": "news",
+          "language": "en",
+          "trust": "medium",
+          "ru_summary": "ПРИМЕР: краткое резюме на русском.",
+          "summary_is_generated": true,
+          "is_machine_translated": true
+        }
+      ],
+      "report_md": null
+    }
+  ],
+  "excluded": [
+    {
+      "candidate_id": "example-mature",
+      "name": "Пример зрелой технологии",
+      "excluded": true,
+      "reason_code": "mature",
+      "reason_text": "ПРИМЕР: зрелая технология — 45 000 публикаций, есть стандарт ISO"
+    },
+    {
+      "candidate_id": "example-hype",
+      "name": "Пример хайпа",
+      "excluded": true,
+      "reason_code": "hype",
+      "reason_text": "ПРИМЕР: хайп — 300 новостей и пресс-релизов, 2 научные работы"
+    }
+  ],
+  "model_calls": [
+    {
+      "step": "expand_query",
+      "model": "qwen3:8b",
+      "provider": "ollama",
+      "duration_ms": 4200,
+      "ts": "2026-09-18T14:06:25.805423Z"
+    },
+    {
+      "step": "score",
+      "model": "catboost-v1",
+      "provider": "local",
+      "duration_ms": 35,
+      "ts": "2026-09-18T14:06:25.805442Z"
+    }
+  ],
+  "started_at": "2026-09-18T14:06:25.805449Z",
+  "duration_s": 183.4,
+  "error": null
+}
