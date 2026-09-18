@@ -1,0 +1,92 @@
+term_en,name_ru,domain,kind,why
+edge computing gateway,Шлюзы граничных вычислений,Edge,mature,Массовый продукт у всех вендоров промышленного IoT
+multi-access edge computing,Граничные вычисления в сетях 5G (MEC),Edge,mature,Стандарт ETSI с 2014 г.
+TensorFlow Lite on-device inference,Инференс нейросетей на смартфоне (TensorFlow Lite),Edge,mature,Стандартный инструмент мобильной разработки
+neural network quantization,Квантизация нейросетей (INT8),Edge,mature,Штатная функция всех фреймворков
+keyword spotting,Распознавание ключевых слов на устройстве (wake word),Edge,mature,Во всех умных колонках и смартфонах
+LoRaWAN,Сети LoRaWAN для IoT,Edge,mature,Стандарт LoRa Alliance с 2015 г.
+Bluetooth Low Energy,Bluetooth Low Energy,Edge,mature,Массовый стандарт
+MQTT,Протокол MQTT для IoT,Edge,mature,Стандарт OASIS/ISO
+firmware over-the-air update,Обновление прошивки по воздуху (OTA),Edge,mature,Массовая практика
+smartphone face unlock,Разблокировка смартфона по лицу,Edge,mature,Массовая функция с 2017 г.
+advanced driver assistance systems camera,Камерные системы помощи водителю (ADAS),Edge,mature,Серийно во всех автомобилях
+on-device speech recognition,Распознавание речи на устройстве,Edge,mature,Серийно у Apple и Google
+FPGA acceleration,Ускорение вычислений на FPGA,Edge,mature,Зрелая отрасль
+content delivery network,Сети доставки контента (CDN),Edge,mature,Массовая инфраструктура интернета
+edge metaverse rendering,Рендеринг метавселенных на границе сети,Edge,hype,Много новостей и мало внедрений после спада интереса к метавселенным
+spam filtering machine learning,Фильтрация спама машинным обучением,Защита ИИ,mature,Массово с 2000-х
+adversarial examples,Состязательные примеры для нейросетей,Защита ИИ,mature,Огромный корпус исследований с 2014 г.
+differential privacy,Дифференциальная приватность,Защита ИИ,mature,Изучается с 2006 г.; применяется в переписи США
+federated learning,Федеративное обучение (в целом),Защита ИИ,mature,Десятки тысяч публикаций с 2017 г.
+deepfake detection,Детекция дипфейков,Защита ИИ,mature,Массовое направление и коммерческие продукты
+face recognition,Распознавание лиц,Защита ИИ,mature,Массовая технология
+web application firewall,Межсетевой экран веб-приложений (WAF),Защита ИИ,mature,Стандартный продукт безопасности
+multi-factor authentication,Многофакторная аутентификация,Защита ИИ,mature,Массовая практика
+OAuth 2.0,Протокол авторизации OAuth 2.0,Защита ИИ,mature,Стандарт IETF RFC 6749
+security information and event management,SIEM-системы,Защита ИИ,mature,Зрелый рынок
+data loss prevention,Предотвращение утечек данных (DLP),Защита ИИ,mature,Зрелый рынок
+CAPTCHA,CAPTCHA,Защита ИИ,mature,Массово с 2000-х
+zero trust architecture,Архитектура нулевого доверия,Защита ИИ,hype,Маркетинговый термин: много новостей на единицу исследований
+malware detection machine learning,Обнаружение вредоносного ПО машинным обучением,Защита ИИ,mature,Стандарт у антивирусных вендоров
+AI-powered cybersecurity,«Кибербезопасность на ИИ»,Защита ИИ,hype,Маркетинговый зонтичный термин без конкретной технологии
+predictive maintenance,Предиктивное обслуживание,Индустриальный ИИ,mature,Массовые внедрения с 2010-х
+digital twin,Цифровой двойник,Индустриальный ИИ,mature,Массовый термин и продукты всех вендоров
+visual inspection deep learning,Визуальный контроль качества на глубоком обучении,Индустриальный ИИ,mature,Серийные продукты с конца 2010-х
+SCADA,SCADA-системы,Индустриальный ИИ,mature,Зрелая промышленная технология
+manufacturing execution system,Системы MES,Индустриальный ИИ,mature,Зрелый рынок
+industrial internet of things,Промышленный интернет вещей,Индустриальный ИИ,mature,Массовый термин с 2012 г.
+OPC UA,Протокол OPC UA,Индустриальный ИИ,mature,Стандарт IEC 62541
+robotic process automation,Роботизация бизнес-процессов (RPA),Индустриальный ИИ,mature,Зрелый рынок
+collaborative robots,Коллаборативные роботы (коботы),Индустриальный ИИ,mature,Серийно с 2008 г.
+demand forecasting machine learning,Прогноз спроса машинным обучением,Индустриальный ИИ,mature,Массовая практика
+process mining,Анализ процессов (process mining),Индустриальный ИИ,mature,Зрелый рынок
+vibration analysis condition monitoring,Вибродиагностика оборудования,Индустриальный ИИ,mature,Десятилетия практики и стандарты ISO
+additive manufacturing,Аддитивное производство (3D-печать),Индустриальный ИИ,mature,Зрелая отрасль
+topology optimization,Топологическая оптимизация,Индустриальный ИИ,mature,Штатная функция CAD-систем
+Industry 4.0,«Индустрия 4.0»,Индустриальный ИИ,hype,Зонтичный маркетинговый термин
+GPU cluster deep learning training,Обучение нейросетей на GPU-кластерах,Инфраструктура ИИ,mature,Массовая практика
+high bandwidth memory,Память HBM,Инфраструктура ИИ,mature,Серийно с 2015 г.; стандарт JEDEC
+tensor processing unit,Тензорные процессоры (TPU),Инфраструктура ИИ,mature,В эксплуатации с 2015 г.
+Kubernetes,Kubernetes,Инфраструктура ИИ,mature,Отраслевой стандарт оркестрации
+InfiniBand,Сеть InfiniBand,Инфраструктура ИИ,mature,Стандарт с 1999 г.
+mixed precision training,Обучение со смешанной точностью,Инфраструктура ИИ,mature,Штатная функция фреймворков
+model parallelism,Модельный параллелизм,Инфраструктура ИИ,mature,Стандартная техника обучения больших моделей
+NVMe SSD,Накопители NVMe,Инфраструктура ИИ,mature,Массовый стандарт
+serverless computing,Бессерверные вычисления,Инфраструктура ИИ,mature,Массовый облачный сервис
+data center liquid cooling,Жидкостное охлаждение ЦОД,Инфраструктура ИИ,mature,Серийные решения у всех вендоров
+RDMA,Удалённый прямой доступ к памяти (RDMA),Инфраструктура ИИ,mature,Зрелая технология
+transformer neural network,Нейросети-трансформеры,Инфраструктура ИИ,mature,Основа всех современных моделей с 2017 г.
+cloud computing,Облачные вычисления,Инфраструктура ИИ,mature,Массовая инфраструктура
+blockchain GPU sharing,Аренда GPU на блокчейне,Инфраструктура ИИ,hype,Много анонсов и токенов при малом реальном использовании
+quantum computing for AI,Квантовые вычисления для ИИ,Инфраструктура ИИ,hype,Много новостей и обещаний; практических результатов почти нет
+industrial robot arm,Промышленные роботы-манипуляторы,Роботы,mature,Серийно с 1960-х
+robotic vacuum cleaner,Роботы-пылесосы,Роботы,mature,Массовый потребительский продукт
+autonomous mobile robots warehouse,Автономные складские роботы (AMR),Роботы,mature,Массово у Amazon и других с 2012 г.
+surgical robot,Хирургические роботы,Роботы,mature,Da Vinci в клиниках с 2000 г.
+unmanned aerial vehicle,Беспилотные летательные аппараты,Роботы,mature,Массовый рынок
+simultaneous localization and mapping,SLAM,Роботы,mature,Классическая задача с 1980-х
+Robot Operating System,ROS,Роботы,mature,Отраслевой стандарт с 2007 г.
+exoskeleton,Экзоскелеты,Роботы,mature,Серийные продукты и тысячи публикаций
+lidar,Лидары,Роботы,mature,Серийно в автопроме и робототехнике
+reinforcement learning robot control,Обучение с подкреплением для управления роботами,Роботы,mature,Огромный корпус исследований
+soft robotics,Мягкая робототехника (в целом),Роботы,mature,Сформировавшееся научное направление с 2010-х
+self-driving car,Беспилотные автомобили,Роботы,hype,Пик хайпа и сдвиг сроков массового внедрения
+humanoid robot,Человекоподобные роботы (в целом),Роботы,hype,"Больше новостей и презентаций, чем внедрений"
+sidewalk delivery robot,Роботы-доставщики по тротуарам,Роботы,hype,"Много анонсов, часть проектов закрыта"
+mobile banking,Мобильный банкинг,Финтех,mature,Массовая услуга
+contactless payments,Бесконтактные платежи (NFC),Финтех,mature,Массовая услуга
+credit scoring machine learning,Кредитный скоринг машинным обучением,Финтех,mature,Стандартная практика банков
+robo-advisor,Робоэдвайзеры,Финтех,mature,Зрелый рынок с 2010-х
+peer-to-peer lending,P2P-кредитование,Финтех,mature,Зрелый рынок с 2005 г.
+open banking,Открытый банкинг (API),Финтех,mature,Регулирование PSD2 и массовые API
+buy now pay later,Рассрочка BNPL,Финтех,mature,Массовая услуга
+banking chatbot,Чат-боты в банках,Финтех,mature,Во всех крупных банках
+QR code payments,Платежи по QR-коду,Финтех,mature,"Массовая услуга (СБП, Alipay)"
+fraud detection machine learning,Антифрод на машинном обучении,Финтех,mature,Стандартная практика
+algorithmic trading,Алгоритмическая торговля,Финтех,mature,Большая часть оборота бирж
+biometric authentication payments,Биометрическая аутентификация платежей,Финтех,mature,Массовая функция
+Bitcoin,Биткоин,Финтех,mature,Массовый актив с 2009 г.
+blockchain,Блокчейн (в целом),Финтех,hype,Много новостей на единицу исследований; пик хайпа пройден
+non-fungible token,NFT,Финтех,hype,Пик хайпа 2021 г. и резкий спад
+metaverse banking,Банкинг в метавселенной,Финтех,hype,"Много анонсов, практически нет использования"
+initial coin offering,ICO,Финтех,hype,"Пик 2017–2018 гг., затем спад и запреты"
