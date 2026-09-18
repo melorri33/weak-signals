@@ -23,7 +23,7 @@ def test_normalize_stage(raw, stage):
 
 def test_negatives_are_well_formed():
     neg = load_negatives()
-    assert len(neg) >= 80
-    assert set(neg["kind"]) <= {"mature", "hype", "noise"}
+    assert len(neg) >= 200
+    assert set(neg["kind"]) <= {"mature", "mainstream", "hype", "noise"}
     assert neg["term_en"].is_unique
     assert neg.notna().all().all()
