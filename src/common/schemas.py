@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import Literal
 
@@ -18,7 +18,7 @@ CONFIDENT_THRESHOLD = 0.75
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class SourceType(str, Enum):
@@ -49,7 +49,9 @@ class Document(BaseModel):
     """Один найденный документ (статья, патент, новость...)."""
 
     id: str = Field(description="'<source>:<внешний id>', например 'openalex:W4391234567'")
-    source: str = Field(description="openalex | arxiv | semantic_scholar | patentsview | gdelt | cyberleninka | rss ...")
+    source: str = Field(
+        description="openalex | arxiv | semantic_scholar | patentsview | gdelt | cyberleninka | rss ..."
+    )
     source_type: SourceType
     title: str
     abstract: str | None = None
@@ -123,7 +125,9 @@ class FilterDecision(BaseModel):
     name: str
     excluded: bool
     reason_code: Literal["mature", "hype", "noise", "ok"]
-    reason_text: str = Field(description="по-русски, для интерфейса: «Зрелая технология: 45 000 публикаций, есть стандарт ISO»")
+    reason_text: str = Field(
+        description="по-русски, для интерфейса: «Зрелая технология: 45 000 публикаций, есть стандарт ISO»"
+    )
 
 
 class Explanation(BaseModel):
