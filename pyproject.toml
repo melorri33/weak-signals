@@ -5,3 +5,9 @@ target-version = "py311"
 [tool.pytest.ini_options]
 markers = ["network: тест ходит в интернет"]
 asyncio_mode = "auto"
+
+[tool.ruff.lint]
+# Набор правил зафиксирован явно, чтобы у всех версий ruff результат был одинаковым.
+select = ["E", "F", "W", "I", "UP", "B"]
+# StrEnum меняет поведение str() у значений контрактов — оставляем (str, Enum).
+ignore = ["UP042"]
