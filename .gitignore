@@ -6,5 +6,7 @@ data/*
 !data/.gitkeep
 .ipynb_checkpoints/
 *.cbm
+!src/model/artifacts/weak_signal.cbm
 .pytest_cache/
 .ruff_cache/
+catboost_info/
