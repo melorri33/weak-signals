@@ -26,7 +26,7 @@ from src.common.config import get_settings
 
 DATA = Path("data")
 # Поиск точной фразы: без кавычек OpenAlex ищет слова по отдельности
-# («processing-in-pixel» → 139 тыс. работ вместо 1.5 тыс.).
+# («quantum sensing» → 62 тыс. работ вместо 7 тыс.).
 CACHE = DATA / "openalex_years_phrase.json"
 API = "https://api.openalex.org/works"
 LAST_FULL_YEAR = 2025  # 2026 ещё не закончился — рост считаем по полным годам
