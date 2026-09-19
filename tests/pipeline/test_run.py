@@ -2,9 +2,9 @@
 
 import pytest
 
-from src.common.schemas import TOP_N, SearchResult
+from src.common.schemas import TOP_N, ScoredCandidate, SearchResult
 from src.pipeline import deps
-from src.pipeline.run import STAGE_DONE, run
+from src.pipeline.run import STAGE_DONE, _log_near_misses, run
 
 
 @pytest.fixture(autouse=True)
@@ -61,3 +61,18 @@ async def test_progress_callback_sees_stages():
 
     assert stages[0] == "расширяем запрос"
     assert stages[-1] == STAGE_DONE
+
+
+def test_near_misses_are_logged(caplog: pytest.LogCaptureFixture):
+    """Кандидаты сразу за топ-15 попадают в лог: по ним видно, что технологию нашли, но ранжировали низко."""
+    scored = [
+        ScoredCandidate(candidate_id=f"c{i}", name=f"Технология {i}", score=round(1 - i / 100, 2)) for i in range(40)
+    ]
+
+    with caplog.at_level("INFO", logger="src.pipeline.run"):
+        _log_near_misses(scored)
+
+    logged = caplog.text
+    assert "Технология 15 0.85" in logged  # первый не попавший в топ-15
+    assert "Технология 29" in logged  # показываем 15 ближайших
+    assert "Технология 30" not in logged

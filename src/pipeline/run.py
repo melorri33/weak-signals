@@ -45,6 +45,9 @@ STATS_BUDGET_S = 60.0
 SCORE_BUDGET_S = 5.0
 CARDS_BUDGET_S = 60.0
 
+# Сколько кандидатов сразу за топ-15 показываем в логе прогона.
+NEAR_MISSES_IN_LOG = 15
+
 # Сколько запросов статистики и карточек делаем одновременно.
 STATS_CONCURRENCY = 8
 CARDS_CONCURRENCY = 3
@@ -104,6 +107,7 @@ async def run(
     scored = _score(kept, features_kept)
 
     progress("собираем карточки")
+    _log_near_misses(scored)
     result.top = await _cards(scored[:TOP_N], candidates, docs)
     result.confident_signals = sum(card.score > CONFIDENT_THRESHOLD for card in result.top)
 
@@ -182,6 +186,22 @@ def _score(candidates: list[Candidate], features: list[CandidateFeatures]) -> li
     except Exception:
         log.exception("model.score упал — выдача будет без уверенности модели")
         return []
+
+
+def _log_near_misses(scored: list[ScoredCandidate]) -> None:
+    """Кандидаты, которые нашлись, но не попали в топ-15.
+
+    Нужно, чтобы отличать «технологию не нашли» от «нашли, но ранжировали низко»: первое лечится
+    источниками и выделением кандидатов, второе — скорингом и правилами отсева.
+    """
+    missed = scored[TOP_N : TOP_N + NEAR_MISSES_IN_LOG]
+    if not missed:
+        return
+    log.info(
+        "Не попали в топ-15 (ближайшие %d): %s",
+        len(missed),
+        "; ".join(f"{s.name} {s.score:.2f}" for s in missed),
+    )
 
 
 async def _cards(
