@@ -53,25 +53,24 @@ def test_score_is_logged_as_model_call(no_model):
 
 
 @pytest.mark.skipif(not score_module.MODEL_PATH.exists(), reason="модель не обучена")
-def test_trained_model_separates_young_from_mature():
-    young = TermStats(
-        term="young",
-        pubs_by_year={LAST - 3: 5, LAST - 2: 15, LAST - 1: 40, LAST: 90},
-        news_by_year={LAST: 1},
-        wikipedia_en=False,
-    )
+def test_trained_model_prefers_small_growing_topics():
+    """Суть модели: при равном объёме растущая тема выше плоской; маленькая растущая — выше зрелой."""
+    no_news = {2016: 0, 2023: 0, 2024: 1, LAST: 1}
+    growing = TermStats(term="g", pubs_by_year={LAST - 3: 2, LAST - 2: 5, LAST - 1: 12, LAST: 30}, news_by_year=no_news)
+    flat = TermStats(term="f", pubs_by_year={y: 30 for y in range(LAST - 8, LAST + 1)}, news_by_year=no_news)
     mature = TermStats(
-        term="mature",
+        term="m",
         pubs_by_year={y: 3000 + 200 * (y - 2000) for y in range(2000, YEAR + 1)},
-        news_by_year={y: 300 for y in range(2016, YEAR + 1)},
+        news_by_year={2016: 2000, 2023: 400, 2024: 400, LAST: 400},
         wikipedia_en=True,
     )
-    cands = [Candidate(id="young", name="young"), Candidate(id="mature", name="mature")]
-    feats = [compute(cands[0], [], young), compute(cands[1], [], mature)]
+    cands = [Candidate(id=k, name=k) for k in ("growing", "flat", "mature")]
+    feats = [compute(c, [], s) for c, s in zip(cands, (growing, flat, mature), strict=True)]
 
     start_run_log()
     result = {s.candidate_id: s for s in score(cands, feats)}
 
-    assert result["young"].score > 0.5 > result["mature"].score
-    assert result["young"].top_reasons and all(r.text for r in result["young"].top_reasons)
+    assert result["growing"].score > result["flat"].score > result["mature"].score
+    assert result["mature"].score < 0.2
+    assert result["growing"].top_reasons and all(r.text for r in result["growing"].top_reasons)
     assert collected_model_calls()[-1].model == score_module.MODEL_NAME
