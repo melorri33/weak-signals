@@ -28,7 +28,7 @@
 | ML + ядро | artiom (@melorri33) | `src/common/`, `src/features/`, `src/model/`, `notebooks/`, `reports/` | — |
 | Данные | Егор (@Egorgarnov-0812) | `src/collectors/`, `src/storage/` | `.claude/agents/data-engineer.md` |
 | Интеграция | Алексей (@aleksesiy) | `src/llm/`, `src/pipeline/`, `src/api/`, `docker-compose.yml`, `Dockerfile*`, `README.md` | `.claude/agents/integration-engineer.md` |
-| Продукт | Матвей (@MatChi13) | `src/ui/`, `src/filters/`, `src/trust/`, `config/`, `docs/`, `tests/queries.yaml` | `.claude/agents/product-analyst.md` |
+| Продукт | artiom (@melorri33) — с 19.09 вместо Матвея | `src/ui/`, `src/filters/`, `src/trust/`, `config/`, `docs/`, `tests/queries.yaml` | `.claude/agents/product-analyst.md` |
 
 - Меняешь **только свои папки**. Нужна правка в чужой — опиши, что нужно, и передай владельцу.
 - `src/common/schemas.py` (контракты) меняет **только ядро (artiom)**. Не хватает поля — предложи его в PR-описании или сообщении, но не правь сам.

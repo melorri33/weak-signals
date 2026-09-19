@@ -1,0 +1,178 @@
+# Уровни доверия к источникам (ТЗ, «Требования к источникам»).
+#
+# Порядок: сначала уровень по типу источника (by_source_type), затем уточнение по домену.
+# Домен сравнивается по окончанию: «nature.com» подходит и для www.nature.com, и для link.nature.com;
+# «.gov» — для любых доменов, которые на него оканчиваются. Первое совпадение из high → medium → low.
+# Неизвестный домен — уровень по типу источника. Сюда попадают и официальные сайты компаний-разработчиков:
+# ТЗ относит их к доверенным источникам, поэтому их материалы (тип news/report) получают средний уровень,
+# а пресс-релизы (тип press_release) — низкий: ТЗ разрешает их только как первичный индикатор.
+
+by_source_type:
+  paper: high          # научная статья (журнал, конференция)
+  patent: high         # патентные базы
+  gov: high            # госорганы, регуляторы, международные организации
+  preprint: medium     # arXiv и т.п. — без рецензии
+  report: medium       # аналитические отчёты
+  news: medium         # СМИ
+  blog: low            # ТЗ: блоги, соцсети, пресс-релизы — только первичный индикатор
+  social: low
+  press_release: low
+  other: low
+
+domains:
+  high:
+    # госорганы, регуляторы, международные организации
+    - .gov
+    - .gov.ru
+    - .gov.uk
+    - .mil
+    - europa.eu
+    - cbr.ru
+    - bis.org
+    - imf.org
+    - oecd.org
+    - worldbank.org
+    - un.org
+    - who.int
+    - fatf-gafi.org
+    - mas.gov.sg
+    - europol.europa.eu
+    # стандарты
+    - iso.org
+    - ietf.org
+    - w3.org
+    - nist.gov
+    - etsi.org
+    - owasp.org
+    # вузы и научные центры
+    - .edu
+    - .ac.uk
+    - .ac.jp
+    - mit.edu
+    - ethz.ch
+    - epfl.ch
+    - msu.ru
+    - hse.ru
+    - skoltech.ru
+    # научные издательства и патентные базы
+    - nature.com
+    - science.org
+    - sciencedirect.com
+    - springer.com
+    - link.springer.com
+    - wiley.com
+    - ieee.org
+    - ieeexplore.ieee.org
+    - acm.org
+    - dl.acm.org
+    - pnas.org
+    - cell.com
+    - thelancet.com
+    - openalex.org
+    - doi.org
+    - patents.google.com
+    - patentsview.org
+    - lens.org
+    - wipo.int
+    - epo.org
+    - fips.ru
+    - elibrary.ru
+
+  medium:
+    # препринты и открытые репозитории
+    - arxiv.org
+    - biorxiv.org
+    - medrxiv.org
+    - ssrn.com
+    - openreview.net
+    - researchgate.net
+    - cyberleninka.ru
+    - mdpi.com
+    - frontiersin.org
+    - github.com
+    # деловые и отраслевые СМИ
+    - reuters.com
+    - bloomberg.com
+    - ft.com
+    - wsj.com
+    - economist.com
+    - fortune.com
+    - cnbc.com
+    - techcrunch.com
+    - siliconangle.com
+    - theaiinsider.tech
+    - venturebeat.com
+    - theverge.com
+    - wired.com
+    - arstechnica.com
+    - technologyreview.com
+    - zdnet.com
+    - theregister.com
+    - eetimes.com
+    - tomshardware.com
+    - anandtech.com
+    - datacenterdynamics.com
+    - therobotreport.com
+    - roboticsandautomationnews.com
+    - spectrum.ieee.org
+    - geekwire.com
+    - eu-startups.com
+    - sifted.eu
+    - theblock.co
+    - coindesk.com
+    - finextra.com
+    - pymnts.com
+    - kommersant.ru
+    - vedomosti.ru
+    - rbc.ru
+    - tadviser.ru
+    - cnews.ru
+    - finance.yahoo.com
+    - securityweek.com
+    - biometricupdate.com
+    - pandaily.com
+    - pulse2.com
+    - techfundingnews.com
+    - thesaasnews.com
+    - edge-ai-vision.com
+    # аналитика
+    - gartner.com
+    - mckinsey.com
+    - bcg.com
+    - cbinsights.com
+    - pitchbook.com
+    - crunchbase.com
+
+  low:
+    # пресс-релизы
+    - prnewswire.com
+    - businesswire.com
+    - globenewswire.com
+    - accesswire.com
+    - einpresswire.com
+    - newswire.com
+    # блоги и платформы для публикаций
+    - medium.com
+    - substack.com
+    - habr.com
+    - vc.ru
+    - dev.to
+    - hashnode.dev
+    - blogspot.com
+    - wordpress.com
+    - tumblr.com
+    # соцсети и видео
+    - x.com
+    - twitter.com
+    - linkedin.com
+    - facebook.com
+    - reddit.com
+    - t.me
+    - youtube.com
+    - tiktok.com
+    - vk.com
+    # агрегаторы
+    - news.google.com
+    - news.ycombinator.com
+    - flipboard.com
+    - feedly.com
