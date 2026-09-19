@@ -56,3 +56,15 @@ def test_evaluate_shows_where_items_are_lost():
     ]
     md = report_md(REF, "Защита ИИ", "q", stages)
     assert "✅ Защита MCP-серверов" in md and "❌ Red teaming как услуга" in md
+
+
+def test_scored_stage_separates_found_but_ranked_low():
+    from src.common.schemas import ScoredCandidate
+
+    scored = [
+        ScoredCandidate(candidate_id=f"c{i}", name=n, score=0.9 - i / 100)
+        for i, n in enumerate(["x", "Mindgard platform"])
+    ]
+    result = SearchResult(run_id="r", query="q", top=[], scored=scored)
+    stages = {s.stage: sorted(s.found) for s in evaluate(REF, "Защита ИИ", result=result)}
+    assert stages == {"все проскоренные": [2], "топ-15": []}

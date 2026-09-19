@@ -2,7 +2,7 @@
 
 Организаторы проверяют именно так (ответ 19.09): по технологиям датасета делают открытый запрос и считают,
 сколько из нашего топ-15 совпало с их списком. Здесь то же самое автоматически, плюс диагностика —
-на каком шаге теряются технологии: документы после сбора → кандидаты → топ-15.
+на каком шаге теряются технологии: документы после сбора → кандидаты → все проскоренные → топ-15.
 
 Сопоставление — по компаниям из датасета и по термину технологии (data/positive_terms.csv).
 Они используются ТОЛЬКО для проверки: вшивать их в поиск или промпты запрещает ТЗ.
@@ -167,6 +167,9 @@ def evaluate(
     if candidates is not None:
         text = "\n".join("\n".join([c.name, c.name_ru or "", *c.aliases]) for c in candidates)
         stages.append(StageReport("кандидаты", {i.id: by for i, by in match(text, items)}))
+    if result is not None and result.scored:
+        text = "\n".join(s.name for s in result.scored)
+        stages.append(StageReport("все проскоренные", {i.id: by for i, by in match(text, items)}))
     if result is not None:
         found: dict[int, str] = {}
         for card in result.top:

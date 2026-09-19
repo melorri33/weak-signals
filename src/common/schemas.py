@@ -206,6 +206,10 @@ class SearchResult(BaseModel):
     confident_signals: int = Field(default=0, description=f"сколько сигналов со score > {CONFIDENT_THRESHOLD}")
     top: list[SignalCard] = Field(default_factory=list, max_length=TOP_N)
     excluded: list[FilterDecision] = Field(default_factory=list)
+    scored: list[ScoredCandidate] = Field(
+        default_factory=list,
+        description="все кандидаты после отсева с оценкой, по убыванию: «не нашли» vs «нашли, но низко»",
+    )
     model_calls: list[ModelCall] = Field(default_factory=list)
     started_at: datetime = Field(default_factory=_now)
     duration_s: float | None = None

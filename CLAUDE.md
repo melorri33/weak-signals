@@ -11,7 +11,7 @@
 1. **Модель на датасете.** Классификатор «слабый сигнал / нет» с объяснимостью (SHAP); главная метрика — **accuracy** (порог 75–80%), в отчёте также Precision, Recall, F1. Датасет организаторов — xlsx из 100 технологий, **только слабые сигналы**; других данных и скрытой разметки не будет, дополнять шумом и зрелыми разрешено (ответ организаторов, 19.09). Наши 253 отрицательных примера — `src/model/training/negatives.csv`.
 2. **Открытый поиск.** Конвейер: запрос → сбор источников → кандидаты → признаки → отсев и скоринг → карточки топ-15 → веб-интерфейс.
 
-**Как проверяют (ответ организаторов, 19.09).** Жюри вводит запрос по области из датасета (индустриальный ИИ, инфраструктура ИИ, роботы, финтех, edge, защита ИИ) и считает, **сколько из нашего топ-15 совпало с технологиями датасета**. По областям вне датасета — экспертная оценка. Значит, главное — чтобы конвейер **нашёл** эти технологии среди кандидатов и назвал их с той же детализацией («сканеры безопасности MCP-серверов», а не «кибербезопасность»).
+**Как проверяют (ответ организаторов, 19.09).** Жюри вводит запрос по области из датасета (индустриальный ИИ, инфраструктура ИИ, роботы, финтех, edge, защита ИИ) и считает, **сколько из нашего топ-15 совпало с технологиями датасета**. По областям вне датасета — экспертная оценка. Значит, главное — чтобы конвейер **нашёл** эти технологии среди кандидатов и назвал их с той же узкой детализацией (не «энергетика», а «натрий-ионные аккумуляторы для сетевых накопителей»; примеры — только из областей вне датасета).
 
 **Где организаторы искали свои сигналы.** Из 285 ссылок датасета: 71% — техноновости (TechCrunch, SiliconANGLE, The AI Insider, EE Times, DatacenterDynamics, The Robot Report…), 16% — блоги компаний и пресс-релизы, 10% — наука (arXiv, Nature). Около трети описаний — про свежие раунды стартапов. Поэтому сбор документов начинается с **техноновостей (RSS)**, наука — вторым источником.
 
@@ -72,13 +72,13 @@
 | collectors | `async collect(phrases, limit=500)` | `list[str]` → `list[Document]` | Данные |
 | collectors | `async term_stats(term)` | `str` → `TermStats` | Данные |
 | storage | `save_documents`, `get_documents`, `save_search_result`, `get_search_result` | `Document` / `SearchResult` | Данные |
-| llm | `expand_query(query)` | `str` → `list[str]` | Интеграция |
-| pipeline | `extract_candidates(docs)` | `list[Document]` → `list[Candidate]` | Интеграция |
+| llm | `async expand_query(query)` | `str` → `list[str]` | Интеграция |
+| pipeline | `async extract_candidates(docs)` | `list[Document]` → `list[Candidate]`; `name` — устоявшийся английский термин из 2–4 слов (по нему ищется статистика точной фразой) | Интеграция |
 | features | `compute(candidate, docs, stats)` | → `CandidateFeatures` | ML |
 | trust | `level_for(url, source_type)` | → `TrustLevel` | Продукт |
 | filters | `apply(candidate, features)` | → `FilterDecision` | Продукт |
 | model | `score(candidates, features)` | → `list[ScoredCandidate]` | ML |
-| llm | `make_card(scored, docs)` | → `SignalCard` | Интеграция |
+| llm | `async make_card(scored, docs, name_ru=None)` | → `SignalCard`; нет проверенных источников → `NoSourcesError` | Интеграция |
 | pipeline | `async run(query)` | `str` → `SearchResult` | Интеграция |
 | api | `POST /search`, `GET /search/{run_id}`, `GET /signal/{run_id}/{candidate_id}` | JSON по схемам | Интеграция |
 
