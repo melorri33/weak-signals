@@ -59,3 +59,29 @@ async def test_fallback_without_llm():
 @pytest.mark.parametrize("query", ["", "   "])
 async def test_empty_query(query: str):
     assert await expand_query(query, client=_BrokenClient()) == []  # type: ignore[arg-type]
+
+
+def test_clean_drops_twin_phrases():
+    """Фразы-близнецы отличаются только служебными словами — искать по обеим бессмысленно."""
+    phrases = _clean(
+        [
+            "homomorphic encryption for banking systems",
+            "homomorphic encryption banking",
+            "banking homomorphic encryption applications",
+            "homomorphic encryption for payments",  # другая подтема — остаётся
+        ]
+    )
+    assert phrases == ["homomorphic encryption for banking systems", "homomorphic encryption for payments"]
+
+
+def test_clean_drops_prompt_placeholders():
+    """Модель иногда переносит в ответ подсказки из формата промпта."""
+    assert _clean(["<русская фраза 1>", "<english phrase 2>", "натрий-ионные аккумуляторы"]) == [
+        "натрий-ионные аккумуляторы"
+    ]
+
+
+def test_clean_drops_whole_directions():
+    """Отрасль и общее направление — не поисковая фраза: по ним находятся обзоры рынка."""
+    phrases = _clean(["edge computing", "машинное обучение", "микроконтроллеры с нейросетями"])
+    assert phrases == ["микроконтроллеры с нейросетями"]
