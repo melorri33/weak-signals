@@ -1,0 +1,474 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/VACogpNQdgMEiaa6xk3GzKaK+rk</id>
+  <title>arXiv Query: search_query=all:"quantum sensing"&amp;id_list=&amp;start=0&amp;max_results=5</title>
+  <updated>2026-09-19T17:02:12Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=all:%22quantum+sensing%22&amp;start=0&amp;max_results=5&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>5</opensearch:itemsPerPage>
+  <opensearch:totalResults>1995</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2407.21701v2</id>
+    <title>Private and Robust States for Distributed Quantum Sensing</title>
+    <updated>2025-01-09T14:28:25Z</updated>
+    <link href="https://arxiv.org/abs/2407.21701v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2407.21701v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Distributed quantum sensing enables the estimation of multiple parameters encoded in spatially separated probes. While traditional quantum sensing is often focused on estimating a single parameter with maximum precision, distributed quantum sensing seeks to estimate some function of multiple parameters that are only locally accessible for each party involved. In such settings it is natural to not want to give away more information than is necessary. To address this, we use the concept of privacy with respect to a function, ensuring that only information about the target function is available to all the parties, and no other information. We define a measure of privacy (essentially how close we are to this condition being satisfied), and show it satisfies a set of naturally desirable properties of such a measure. Using this privacy measure, we identify and construct entangled resources states that ensure privacy for a given function under different resource distributions and encoding dynamics, characterized by Hamiltonian evolution. For separable and parallel Hamiltonians, we prove that the GHZ state is the only private state for certain linear functions, with the minimum amount of required resources, up to SLOCC. Recognizing the vulnerability of this state to particle loss, we create families of private states, that remain robust even against loss of qubits, by incorporating additional resources. We then extend our findings to different resource distribution scenarios and Hamiltonians, resulting in a comprehensive set of private and robust states for distributed quantum estimation. These results advance the understanding of privacy and robustness in multi-parameter quantum sensing.</summary>
+    <category term="quant-ph" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-07-31T15:46:50Z</published>
+    <arxiv:comment>Keywords: Quantum Sensing, GHZ states, Private Sensing, Quantum Information</arxiv:comment>
+    <arxiv:primary_category term="quant-ph"/>
+    <arxiv:journal_ref>Quantum 9, 1596 (2025)</arxiv:journal_ref>
+    <author>
+      <name>Luís Bugalho</name>
+    </author>
+    <author>
+      <name>Majid Hassani</name>
+    </author>
+    <author>
+      <name>Yasser Omar</name>
+    </author>
+    <author>
+      <name>Damian Markham</name>
+    </author>
+    <arxiv:doi>10.22331/q-2025-01-15-1596</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.22331/q-2025-01-15-1596" title="doi"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1803.11306v1</id>
+    <title>Quantum Sensing for High Energy Physics</title>
+    <updated>2018-03-30T01:34:59Z</updated>
+    <link href="https://arxiv.org/abs/1803.11306v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/1803.11306v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Report of the first workshop to identify approaches and techniques in the domain of quantum sensing that can be utilized by future High Energy Physics applications to further the scientific goals of High Energy Physics.</summary>
+    <category term="hep-ex" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="hep-ph" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="physics.ins-det" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2018-03-30T01:34:59Z</published>
+    <arxiv:comment>38 pages, report of the first workshop on Quantum Sensing for High Energy Physics, held at Argonne National Laboratory, December 12-14, 2017</arxiv:comment>
+    <arxiv:primary_category term="hep-ex"/>
+    <author>
+      <name>Zeeshan Ahmed</name>
+    </author>
+    <author>
+      <name>Yuri Alexeev</name>
+    </author>
+    <author>
+      <name>Giorgio Apollinari</name>
+    </author>
+    <author>
+      <name>Asimina Arvanitaki</name>
+    </author>
+    <author>
+      <name>David Awschalom</name>
+    </author>
+    <author>
+      <name>Karl K. Berggren</name>
+    </author>
+    <author>
+      <name>Karl Van Bibber</name>
+    </author>
+    <author>
+      <name>Przemyslaw Bienias</name>
+    </author>
+    <author>
+      <name>Geoffrey Bodwin</name>
+    </author>
+    <author>
+      <name>Malcolm Boshier</name>
+    </author>
+    <author>
+      <name>Daniel Bowring</name>
+    </author>
+    <author>
+      <name>Davide Braga</name>
+    </author>
+    <author>
+      <name>Karen Byrum</name>
+    </author>
+    <author>
+      <name>Gustavo Cancelo</name>
+    </author>
+    <author>
+      <name>Gianpaolo Carosi</name>
+    </author>
+    <author>
+      <name>Tom Cecil</name>
+    </author>
+    <author>
+      <name>Clarence Chang</name>
+    </author>
+    <author>
+      <name>Mattia Checchin</name>
+    </author>
+    <author>
+      <name>Sergei Chekanov</name>
+    </author>
+    <author>
+      <name>Aaron Chou</name>
+    </author>
+    <author>
+      <name>Aashish Clerk</name>
+    </author>
+    <author>
+      <name>Ian Cloet</name>
+    </author>
+    <author>
+      <name>Michael Crisler</name>
+    </author>
+    <author>
+      <name>Marcel Demarteau</name>
+    </author>
+    <author>
+      <name>Ranjan Dharmapalan</name>
+    </author>
+    <author>
+      <name>Matthew Dietrich</name>
+    </author>
+    <author>
+      <name>Junjia Ding</name>
+    </author>
+    <author>
+      <name>Zelimir Djurcic</name>
+    </author>
+    <author>
+      <name>John Doyle</name>
+    </author>
+    <author>
+      <name>James Fast</name>
+    </author>
+    <author>
+      <name>Michael Fazio</name>
+    </author>
+    <author>
+      <name>Peter Fierlinger</name>
+    </author>
+    <author>
+      <name>Hal Finkel</name>
+    </author>
+    <author>
+      <name>Patrick Fox</name>
+    </author>
+    <author>
+      <name>Gerald Gabrielse</name>
+    </author>
+    <author>
+      <name>Andrei Gaponenko</name>
+    </author>
+    <author>
+      <name>Maurice Garcia-Sciveres</name>
+    </author>
+    <author>
+      <name>Andrew Geraci</name>
+    </author>
+    <author>
+      <name>Jeffrey Guest</name>
+    </author>
+    <author>
+      <name>Supratik Guha</name>
+    </author>
+    <author>
+      <name>Salman Habib</name>
+    </author>
+    <author>
+      <name>Ron Harnik</name>
+    </author>
+    <author>
+      <name>Amr Helmy</name>
+    </author>
+    <author>
+      <name>Yuekun Heng</name>
+    </author>
+    <author>
+      <name>Jason Henning</name>
+    </author>
+    <author>
+      <name>Joseph Heremans</name>
+    </author>
+    <author>
+      <name>Phay Ho</name>
+    </author>
+    <author>
+      <name>Jason Hogan</name>
+    </author>
+    <author>
+      <name>Johannes Hubmayr</name>
+    </author>
+    <author>
+      <name>David Hume</name>
+    </author>
+    <author>
+      <name>Kent Irwin</name>
+    </author>
+    <author>
+      <name>Cynthia Jenks</name>
+    </author>
+    <author>
+      <name>Nick Karonis</name>
+    </author>
+    <author>
+      <name>Raj Kettimuthu</name>
+    </author>
+    <author>
+      <name>Derek Kimball</name>
+    </author>
+    <author>
+      <name>Jonathan King</name>
+    </author>
+    <author>
+      <name>Eve Kovacs</name>
+    </author>
+    <author>
+      <name>Richard Kriske</name>
+    </author>
+    <author>
+      <name>Donna Kubik</name>
+    </author>
+    <author>
+      <name>Akito Kusaka</name>
+    </author>
+    <author>
+      <name>Benjamin Lawrie</name>
+    </author>
+    <author>
+      <name>Konrad Lehnert</name>
+    </author>
+    <author>
+      <name>Paul Lett</name>
+    </author>
+    <author>
+      <name>Jonathan Lewis</name>
+    </author>
+    <author>
+      <name>Pavel Lougovski</name>
+    </author>
+    <author>
+      <name>Larry Lurio</name>
+    </author>
+    <author>
+      <name>Xuedan Ma</name>
+    </author>
+    <author>
+      <name>Edward May</name>
+    </author>
+    <author>
+      <name>Petra Merkel</name>
+    </author>
+    <author>
+      <name>Jessica Metcalfe</name>
+    </author>
+    <author>
+      <name>Antonino Miceli</name>
+    </author>
+    <author>
+      <name>Misun Min</name>
+    </author>
+    <author>
+      <name>Sandeep Miryala</name>
+    </author>
+    <author>
+      <name>John Mitchell</name>
+    </author>
+    <author>
+      <name>Vesna Mitrovic</name>
+    </author>
+    <author>
+      <name>Holger Mueller</name>
+    </author>
+    <author>
+      <name>Sae Woo Nam</name>
+    </author>
+    <author>
+      <name>Hogan Nguyen</name>
+    </author>
+    <author>
+      <name>Howard Nicholson</name>
+    </author>
+    <author>
+      <name>Andrei Nomerotski</name>
+    </author>
+    <author>
+      <name>Michael Norman</name>
+    </author>
+    <author>
+      <name>Kevin O'Brien</name>
+    </author>
+    <author>
+      <name>Roger O'Brient</name>
+    </author>
+    <author>
+      <name>Umeshkumar Patel</name>
+    </author>
+    <author>
+      <name>Bjoern Penning</name>
+    </author>
+    <author>
+      <name>Sergey Perverzev</name>
+    </author>
+    <author>
+      <name>Nicholas Peters</name>
+    </author>
+    <author>
+      <name>Raphael Pooser</name>
+    </author>
+    <author>
+      <name>Chrystian Posada</name>
+    </author>
+    <author>
+      <name>James Proudfoot</name>
+    </author>
+    <author>
+      <name>Tenzin Rabga</name>
+    </author>
+    <author>
+      <name>Tijana Rajh</name>
+    </author>
+    <author>
+      <name>Sergio Rescia</name>
+    </author>
+    <author>
+      <name>Alexander Romanenko</name>
+    </author>
+    <author>
+      <name>Roger Rusack</name>
+    </author>
+    <author>
+      <name>Monika Schleier-Smith</name>
+    </author>
+    <author>
+      <name>Keith Schwab</name>
+    </author>
+    <author>
+      <name>Julie Segal</name>
+    </author>
+    <author>
+      <name>Ian Shipsey</name>
+    </author>
+    <author>
+      <name>Erik Shirokoff</name>
+    </author>
+    <author>
+      <name>Andrew Sonnenschein</name>
+    </author>
+    <author>
+      <name>Valerie Taylor</name>
+    </author>
+    <author>
+      <name>Robert Tschirhart</name>
+    </author>
+    <author>
+      <name>Chris Tully</name>
+    </author>
+    <author>
+      <name>David Underwood</name>
+    </author>
+    <author>
+      <name>Vladan Vuletic</name>
+    </author>
+    <author>
+      <name>Robert Wagner</name>
+    </author>
+    <author>
+      <name>Gensheng Wang</name>
+    </author>
+    <author>
+      <name>Harry Weerts</name>
+    </author>
+    <author>
+      <name>Nathan Woollett</name>
+    </author>
+    <author>
+      <name>Junqi Xie</name>
+    </author>
+    <author>
+      <name>Volodymyr Yefremenko</name>
+    </author>
+    <author>
+      <name>John Zasadzinski</name>
+    </author>
+    <author>
+      <name>Jinlong Zhang</name>
+    </author>
+    <author>
+      <name>Xufeng Zhang</name>
+    </author>
+    <author>
+      <name>Vishnu Zutshi</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2011.01336v2</id>
+    <title>Ultra-precision quantum sensing and measurement based on nonlinear hybrid optomechanical systems containing ultracold atoms or atomic Bose-Einstein condensate</title>
+    <updated>2021-03-18T21:27:08Z</updated>
+    <link href="https://arxiv.org/abs/2011.01336v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2011.01336v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>In this review, we study how a hybrid optomechanical system (OMS), in which a quantum micro- or nano-mechanical oscillator (MO) is coupled to the electromagnetic (EM) radiation pressure, consisting of an ensemble of ultracold atoms or an atomic Bose-Einstein condensate (BEC), can be used as an ultra precision quantum sensor for measuring very weak signals. As is well-known in any precise quantum measurement the competition between the shot noise (SN) and the backaction noise of measurement executes a limitation on the measurement precision which is the so-called standard quantum limit (SQL). In the case where the intensity of the signal is even lower than the SQL, one needs to perform an ultra precision quantum sensing to beat the SQL. For this purpose, we review three important methods for surpassing the SQL in a hybrid OMS: (i) the backaction evading measurement of a quantum nondemolition (QND) variable of the system, (ii) the coherent quantum backaction noise cancellation (CQNC), and (iii) the so-called parametric sensing, the simultaneous signal amplification and added noise suppression below the SQL. Furthermore, we have shown in this article for the first time how the classical fluctuation of the driving laser phase, the so-called laser phase noise (LPN), affects the power spectrum of the output optical field in a standard OMS and induces an additional impression noise which makes the total system noise increase above the SQL. Also, for the first time in this review it has been shown that in the standard OMSs, it is impossible to amplify signal while suppressing the noise below the SQL simultaneously.</summary>
+    <category term="quant-ph" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2020-11-02T21:51:44Z</published>
+    <arxiv:comment>Accepted at AVS Quantum Science in AIP publishing for a review collection Book on Quantum Sensing and Metrology. It was an invited article from AVS AIP publishing. Also, It has been chosen as "Editor's Pick"; 32 pages; 12 figures</arxiv:comment>
+    <arxiv:primary_category term="quant-ph"/>
+    <arxiv:journal_ref>AVS Quantum Sci. 3, 024701 (2021)</arxiv:journal_ref>
+    <author>
+      <name>Ali Motazedifard</name>
+    </author>
+    <author>
+      <name>A. Dalafi</name>
+    </author>
+    <author>
+      <name>M. H. Naderi</name>
+    </author>
+    <arxiv:doi>10.1116/5.0035952</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.1116/5.0035952" title="doi"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2010.14744v2</id>
+    <title>Distributed Quantum Sensing</title>
+    <updated>2020-10-29T04:23:54Z</updated>
+    <link href="https://arxiv.org/abs/2010.14744v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2010.14744v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>A plethora of applications hinge on a network or an array of sensors to undertake measurement tasks. A rule of thumb for sensing is that a collective measurement taken by $M$ independent sensors can improve the sensitivity by $1/\sqrt{M}$, known as the standard quantum limit (SQL). Quantum resources such as entanglement and squeezed light can be harnessed to surpass the SQL. Distributed quantum sensing is an emerging subject dedicated to investigating the performance gain enabled by entangled states shared by multiple sensors in tackling different measurement problems. This Review formulates distributed quantum sensing from a quantum-information perspective and describes distributed quantum sensing protocols and their experimental demonstrations. The applications enabled by distributed quantum sensing and an outlook for future opportunities will also be discussed.</summary>
+    <category term="quant-ph" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="physics.optics" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2020-10-28T04:35:13Z</published>
+    <arxiv:comment>30 pages, 12 figures. Comments are welcome</arxiv:comment>
+    <arxiv:primary_category term="quant-ph"/>
+    <author>
+      <name>Zheshen Zhang</name>
+    </author>
+    <author>
+      <name>Quntao Zhuang</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1907.11363v1</id>
+    <title>Experimental dissipative quantum sensing</title>
+    <updated>2019-07-26T02:42:44Z</updated>
+    <link href="https://arxiv.org/abs/1907.11363v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/1907.11363v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Quantum sensing utilizes quantum systems as sensors to capture weak signal, and provides new opportunities in nowadays science and technology. The strongest adversary in quantum sensing is decoherence due to the coupling between the sensor and the environment. The dissipation will destroy the quantum coherence and reduce the performance of quantum sensing. Here we show that quantum sensing can be realized by engineering the steady-state of the quantum sensor under dissipation. We demonstrate this protocol with a magnetometer based on ensemble Nitrogen-Vacancy centers in diamond, while neither high-quality initialization/readout of the sensor nor sophisticated dynamical decoupling sequences is required. Thus our method provides a concise and decoherence-resistant fashion of quantum sensing. The frequency resolution and precision of our magnetometer are far beyond the coherence time of the sensor. Furthermore, we show that the dissipation can be engineered to improve the performance of our quantum sensing. By increasing the laser pumping, magnetic signal in a broad audio-frequency band from DC up to 140 kHz can be tackled by our method. Besides the potential application in magnetic sensing and imaging within microscopic scale, our results may provide new insight for improvement of a variety of high-precision spectroscopies based on other quantum sensors.</summary>
+    <category term="quant-ph" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2019-07-26T02:42:44Z</published>
+    <arxiv:primary_category term="quant-ph"/>
+    <arxiv:journal_ref>Phys. Rev. Applied 14, 014013 (2020)</arxiv:journal_ref>
+    <author>
+      <name>Yijin Xie</name>
+    </author>
+    <author>
+      <name>Jianpei Geng</name>
+    </author>
+    <author>
+      <name>Huiyao Yu</name>
+    </author>
+    <author>
+      <name>Xing Rong</name>
+    </author>
+    <author>
+      <name>Ya Wang</name>
+    </author>
+    <author>
+      <name>Jiangfeng Du</name>
+    </author>
+    <arxiv:doi>10.1103/PhysRevApplied.14.014013</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.1103/PhysRevApplied.14.014013" title="doi"/>
+  </entry>
+</feed>
