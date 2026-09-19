@@ -4,9 +4,10 @@
 Статистика для обучающей выборки берётся из кэшей экспериментов (notebooks/01, 02):
   data/openalex_years_phrase.json — публикации OpenAlex по годам (поиск точной фразы)
   data/attention_stats.json   — Hacker News по годам (медиа), наличие статьи в Википедии
+  data/openalex_types_orgs.json — публикации по типам OpenAlex (доля препринтов)
 
 Запуск: python -m src.model.train
-Результат: src/model/artifacts/weak_signal.cbm, reports/metrics.md, reports/metrics.json
+Результат: src/model/artifacts/weak_signal.cbm + impute.json, reports/metrics.md, reports/metrics.json
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ def load_term_stats() -> dict[str, TermStats]:
     """Собрать TermStats по терминам обучающей выборки из кэшей экспериментов."""
     pubs = json.loads((DATA / "openalex_years_phrase.json").read_text(encoding="utf-8"))
     attention = json.loads((DATA / "attention_stats.json").read_text(encoding="utf-8"))
+    types = json.loads((DATA / "openalex_types_orgs.json").read_text(encoding="utf-8"))
     stats = {}
     for term, years in pubs.items():
         att = attention.get(term)
@@ -62,6 +64,7 @@ def load_term_stats() -> dict[str, TermStats]:
             pubs_by_year={int(y): n for y, n in years.items()},
             news_by_year={int(y): n for y, n in att["hn"].items()} if att else None,
             wikipedia_en=(att["wiki"]["article"] is not None) if att else None,
+            pubs_by_type=types[term]["types"] if term in types else None,
         )
     return stats
 
@@ -81,13 +84,34 @@ def build_matrix(labeled: pd.DataFrame, stats: dict[str, TermStats]) -> tuple[pd
     return X, kept["label"].to_numpy(), kept
 
 
+# Пропуски, которые заполняем медианой обучающей выборки, а не оставляем NaN.
+# CatBoost считает NaN минимальным значением: пустая доля препринтов читалась бы как «0% препринтов»
+# и занижала бы оценку всем кандидатам, если источник не вернул типы публикаций.
+IMPUTE_MEDIAN = ["preprint_share"]
+IMPUTE_PATH = ARTIFACTS / "impute.json"
+
+
+def impute_values(X: pd.DataFrame) -> dict[str, float]:
+    return {c: round(float(X[c].median()), 4) for c in IMPUTE_MEDIAN}
+
+
+def apply_impute(X: pd.DataFrame, values: dict[str, float]) -> pd.DataFrame:
+    return X.fillna(value=values)
+
+
+def fit(X: pd.DataFrame, y: np.ndarray) -> CatBoostClassifier:
+    model = CatBoostClassifier(**CATBOOST_PARAMS)
+    model.fit(X, y)
+    return model
+
+
 def cross_validate(X: pd.DataFrame, y: np.ndarray) -> np.ndarray:
     """Out-of-fold вероятности, 5-fold stratified CV."""
     oof = np.zeros(len(y))
     for train_idx, test_idx in StratifiedKFold(5, shuffle=True, random_state=SEED).split(X, y):
-        model = CatBoostClassifier(**CATBOOST_PARAMS)
-        model.fit(X.iloc[train_idx], y[train_idx])
-        oof[test_idx] = model.predict_proba(X.iloc[test_idx])[:, 1]
+        X_train = X.iloc[train_idx]
+        model = fit(X_train, y[train_idx])
+        oof[test_idx] = model.predict_proba(apply_impute(X.iloc[test_idx], impute_values(X_train)))[:, 1]
     return oof
 
 
@@ -148,10 +172,10 @@ def main() -> None:
     correct = pd.Series((oof >= THRESHOLD).astype(int) == y, index=kept.index)
     by_kind = correct.groupby(kept["kind"]).mean().round(2)
 
-    model = CatBoostClassifier(**CATBOOST_PARAMS)
-    model.fit(X, y)
+    model = fit(X, y)
     ARTIFACTS.mkdir(exist_ok=True)
     model.save_model(str(MODEL_PATH))
+    IMPUTE_PATH.write_text(json.dumps(impute_values(X), indent=2), encoding="utf-8")
     importance = shap_importance(model, X)
     write_report(m, by_kind, importance, len(y), int(y.sum()))
 

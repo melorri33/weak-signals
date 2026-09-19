@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from datetime import date
 from functools import lru_cache
@@ -21,6 +22,8 @@ from src.common.schemas import Candidate, CandidateFeatures, Explanation, Scored
 from src.model.vectorize import FEATURE_NAMES, explain_ru, to_row
 
 MODEL_PATH = Path(__file__).parent / "artifacts" / "weak_signal.cbm"
+# Медианы обучающей выборки для признаков, где пропуск нельзя оставлять NaN (см. train.IMPUTE_MEDIAN).
+IMPUTE_PATH = MODEL_PATH.parent / "impute.json"
 MODEL_NAME = "catboost-weak-signal"
 HEURISTIC_NAME = "heuristic-stub-v0"
 MODEL_PROVIDER = "local"
@@ -65,6 +68,7 @@ def _score_with_model(model, candidates: list[Candidate], by_id: dict[str, Candi
     from catboost import Pool
 
     X = pd.DataFrame([to_row(by_id[c.id]) for c in known], columns=FEATURE_NAMES, dtype=float)
+    X = X.fillna(value=_impute_values())
     proba = model.predict_proba(X)[:, 1]
     shap = model.get_feature_importance(Pool(X), type="ShapValues")[:, :-1]
     for c, p, contrib, row in zip(known, proba, shap, X.itertuples(index=False), strict=True):
@@ -82,6 +86,11 @@ def _score_with_model(model, candidates: list[Candidate], by_id: dict[str, Candi
         ]
         out.append(ScoredCandidate(candidate_id=c.id, name=c.name, score=round(float(p), 4), top_reasons=reasons))
     return out
+
+
+@lru_cache(maxsize=1)
+def _impute_values() -> dict[str, float]:
+    return json.loads(IMPUTE_PATH.read_text(encoding="utf-8")) if IMPUTE_PATH.exists() else {}
 
 
 # ---------- Запасной путь: эвристика без обученной модели ----------

@@ -28,6 +28,7 @@ FEATURES: list[FeatureSpec] = [
     FeatureSpec("log_news_recent", "Упоминаний в техмедиа за 3 года (лог)"),
     FeatureSpec("news_to_science", "Медиа на одну научную работу (лог)"),
     FeatureSpec("has_wikipedia", "Есть статья в Википедии"),
+    FeatureSpec("preprint_share", "Доля препринтов"),
 ]
 FEATURE_NAMES = [f.name for f in FEATURES]
 
@@ -50,6 +51,7 @@ def to_row(f: CandidateFeatures) -> list[float | None]:
         "log_news_recent": _log(f.extra.get("news_recent")),
         "news_to_science": _log(ratio * 1000) if ratio is not None else None,
         "has_wikipedia": float(f.has_wikipedia) if f.has_wikipedia is not None else None,
+        "preprint_share": f.extra.get("preprint_share"),
     }
     return [values[name] for name in FEATURE_NAMES]
 
@@ -67,6 +69,7 @@ def explain_ru(name: str, f: CandidateFeatures) -> str:
         "log_news_recent": f"Упоминаний в техмедиа за 3 года: {_fmt(f.extra.get('news_recent'))}",
         "news_to_science": f"Медиа-упоминаний на одну научную работу: {f.news_to_science_ratio or 0:.2f}",
         "has_wikipedia": "Есть статья в Википедии" if f.has_wikipedia else "Нет статьи в Википедии",
+        "preprint_share": f"{round((f.extra.get('preprint_share') or 0) * 100)}% публикаций — препринты",
     }
     return texts[name]
 

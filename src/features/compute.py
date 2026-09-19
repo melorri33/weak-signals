@@ -49,12 +49,14 @@ def compute(candidate: Candidate, docs: list[Document], stats: TermStats | None)
         has_wikipedia=_any_true(stats.wikipedia_ru, stats.wikipedia_en) if stats else None,
         has_standard=(stats.standard_mentions > 0) if stats and stats.standard_mentions is not None else None,
         stage=None,
-        extra=_extra(pubs, news),
+        extra=_extra(pubs, news, stats.pubs_by_type if stats else None),
     )
 
 
-def _extra(pubs: dict[int, int], news: dict[int, int] | None) -> dict[str, float | None]:
-    """Признаки динамики: сколько публикаций за последний год и какая доля пришлась на последние 3 года."""
+def _extra(
+    pubs: dict[int, int], news: dict[int, int] | None, by_type: dict[str, int] | None
+) -> dict[str, float | None]:
+    """Динамика публикаций, внимание медиа и доля препринтов (у ранних технологий их много)."""
     last = last_full_year()
     total = sum(pubs.values())
     recent = sum(n for y, n in pubs.items() if y > last - 3)
@@ -63,7 +65,13 @@ def _extra(pubs: dict[int, int], news: dict[int, int] | None) -> dict[str, float
         "pubs_last_year": float(pubs.get(last, 0)) if pubs else None,
         "recent_share": round(recent / total, 4) if total else None,
         "news_recent": float(news_recent) if news_recent is not None else None,
+        "preprint_share": _share(by_type, "preprint"),
     }
+
+
+def _share(by_type: dict[str, int] | None, kind: str) -> float | None:
+    total = sum(by_type.values()) if by_type else 0
+    return round(by_type.get(kind, 0) / total, 4) if by_type and total else None
 
 
 def _own_documents(candidate: Candidate, docs: list[Document]) -> list[Document]:
