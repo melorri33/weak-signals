@@ -1,0 +1,208 @@
+"""Проверка открытого поиска «как у жюри»: запрос по области датасета → топ-15 → сколько совпало с датасетом.
+
+Организаторы проверяют именно так (ответ 19.09): по технологиям датасета делают открытый запрос и считают,
+сколько из нашего топ-15 совпало с их списком. Здесь то же самое автоматически, плюс диагностика —
+на каком шаге теряются технологии: документы после сбора → кандидаты → топ-15.
+
+Сопоставление — по компаниям из датасета и по термину технологии (data/positive_terms.csv).
+Они используются ТОЛЬКО для проверки: вшивать их в поиск или промпты запрещает ТЗ.
+Сопоставление автоматическое и приблизительное — спорные случаи смотреть глазами (отчёт перечисляет, что с чем совпало).
+
+Запуск: python -m src.model.eval_search result.json [--domain Финтех]
+"""
+
+from __future__ import annotations
+
+import argparse
+import glob
+import re
+from collections import Counter
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from src.common.schemas import Candidate, Document, SearchResult
+from src.model.dataset import load_signals
+
+DATA = Path("data")
+TERMS_PATH = DATA / "positive_terms.csv"
+
+# Запрос жюри по каждой области датасета — наш вариант формулировки (точных формулировок жюри мы не знаем).
+DOMAIN_QUERIES: dict[str, str] = {
+    "Индустриальный ИИ": "перспективные технологии индустриального ИИ",
+    "Инфраструктура ИИ": "перспективные технологии инфраструктуры ИИ",
+    "Роботы": "перспективные технологии в робототехнике",
+    "Финтех": "перспективные решения в финтехе",
+    "Edge": "перспективные технологии edge AI и граничных вычислений",
+    "Защита ИИ": "перспективные технологии защиты ИИ",
+}
+
+# Крупные компании встречаются в новостях о чём угодно — по ним совпадение ничего не доказывает.
+_BIG_COMPANIES = {
+    "google",
+    "microsoft",
+    "nvidia",
+    "amazon",
+    "meta",
+    "apple",
+    "samsung",
+    "intel",
+    "amd",
+    "cisco",
+    "ibm",
+    "qualcomm",
+    "hp",
+    "palo alto",
+    "siemens",
+    "visa",
+    "stripe",
+    "coinbase",
+    "j.p. morgan",
+    "jpmorgan",
+    "openai",
+    "anthropic",
+    "dell",
+    "arm",
+    "sony",
+    "huawei",
+    "bosch",
+    "honda",
+    "akamai",
+    "cloudflare",
+    "swift",
+    "google cloud",
+}
+_MIN_NAME_LEN = 4
+
+
+def _is_big(name: str) -> bool:
+    """«Siemens Technology», «HP Inc», «Microsoft Security Research» — тоже крупные компании."""
+    low = name.lower()
+    return any(low == big or low.startswith(big + " ") for big in _BIG_COMPANIES)
+
+
+@dataclass
+class ReferenceItem:
+    id: int
+    name_ru: str
+    domain: str
+    term_en: str
+    companies: list[str] = field(default_factory=list)
+
+
+def _split_companies(raw: str) -> list[str]:
+    """«Multiverse Computing (CompactifAI), HP Inc.» → [Multiverse Computing, CompactifAI, HP Inc.].
+
+    Русские пояснения в скобках отбрасываются.
+    """
+    names = []
+    for part in re.split(r"[,;/+]|\s[—–-]\s", raw):
+        for name in re.split(r"[()]", part):
+            name = name.strip(" .«»\"'")
+            if len(name) >= _MIN_NAME_LEN and not re.search(r"[а-яё]", name, re.IGNORECASE):
+                names.append(name)
+    return names
+
+
+def load_reference(xlsx_path: Path | None = None, terms_path: Path = TERMS_PATH) -> list[ReferenceItem]:
+    """Технологии датасета с компаниями; компании, встречающиеся у нескольких технологий, убираются."""
+    xlsx_path = xlsx_path or Path(glob.glob(str(DATA / "*.xlsx"))[0])
+    df = load_signals(xlsx_path, terms_path)
+    per_item = {int(r.id): _split_companies(str(r.companies)) for r in df.itertuples()}
+    freq = Counter(n.lower() for names in per_item.values() for n in set(names))
+    return [
+        ReferenceItem(
+            id=int(r.id),
+            name_ru=r.name_ru,
+            domain=r.domain,
+            term_en=r.term_en,
+            companies=[n for n in per_item[int(r.id)] if freq[n.lower()] == 1 and not _is_big(n)],
+        )
+        for r in df.itertuples()
+    ]
+
+
+def _mentions(text: str, needle: str) -> bool:
+    return re.search(rf"(?<![\w-]){re.escape(needle)}(?![\w-])", text, re.IGNORECASE) is not None
+
+
+def match(text: str, reference: list[ReferenceItem]) -> list[tuple[ReferenceItem, str]]:
+    """Какие технологии датасета упомянуты в тексте и по чему: компания или термин."""
+    hits = []
+    for item in reference:
+        by = next((c for c in item.companies if _mentions(text, c)), None)
+        if by is None and _mentions(text, item.term_en):
+            by = f"термин «{item.term_en}»"
+        if by is not None:
+            hits.append((item, by))
+    return hits
+
+
+def _card_text(card) -> str:
+    parts = [card.name, card.name_ru or "", card.description, card.case_example]
+    parts += [s.title for s in card.sources] + [s.ru_summary or "" for s in card.sources]
+    return "\n".join(parts)
+
+
+@dataclass
+class StageReport:
+    stage: str
+    found: dict[int, str]  # id технологии датасета → чем подтверждено
+
+
+def evaluate(
+    reference: list[ReferenceItem],
+    domain: str,
+    result: SearchResult | None = None,
+    documents: list[Document] | None = None,
+    candidates: list[Candidate] | None = None,
+) -> list[StageReport]:
+    """Сколько технологий области нашлось на каждом доступном шаге конвейера."""
+    items = [i for i in reference if i.domain == domain]
+    stages: list[StageReport] = []
+    if documents is not None:
+        text = "\n".join(f"{d.title}\n{d.abstract or ''}" for d in documents)
+        stages.append(StageReport("документы после сбора", {i.id: by for i, by in match(text, items)}))
+    if candidates is not None:
+        text = "\n".join("\n".join([c.name, c.name_ru or "", *c.aliases]) for c in candidates)
+        stages.append(StageReport("кандидаты", {i.id: by for i, by in match(text, items)}))
+    if result is not None:
+        found: dict[int, str] = {}
+        for card in result.top:
+            for item, by in match(_card_text(card), items):
+                found.setdefault(item.id, f"{by} → «{card.name_ru or card.name}»")
+        stages.append(StageReport("топ-15", found))
+    return stages
+
+
+def report_md(reference: list[ReferenceItem], domain: str, query: str, stages: list[StageReport]) -> str:
+    items = [i for i in reference if i.domain == domain]
+    lines = [f"## {domain}: «{query}»", "", f"Технологий области в датасете: {len(items)}", ""]
+    lines += ["| Шаг | Найдено | Доля |", "| --- | --- | --- |"]
+    lines += [f"| {s.stage} | {len(s.found)} | {len(s.found) / len(items):.0%} |" for s in stages]
+    if stages:
+        last = stages[-1]
+        lines += ["", f"Совпадения на шаге «{last.stage}»:", ""]
+        lines += [f"- ✅ {i.name_ru} — {last.found[i.id]}" for i in items if i.id in last.found]
+        lines += [f"- ❌ {i.name_ru}" for i in items if i.id not in last.found]
+    return "\n".join(lines) + "\n"
+
+
+def _domain_from_query(query: str) -> str | None:
+    return next((d for d, q in DOMAIN_QUERIES.items() if q == query), None)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Сколько технологий датасета попало в топ-15")
+    ap.add_argument("result", type=Path, help="SearchResult в JSON")
+    ap.add_argument("--domain", choices=list(DOMAIN_QUERIES), help="область датасета (иначе — по тексту запроса)")
+    args = ap.parse_args()
+    result = SearchResult.model_validate_json(args.result.read_text(encoding="utf-8"))
+    domain = args.domain or _domain_from_query(result.query)
+    if domain is None:
+        raise SystemExit(f"Не понял область по запросу «{result.query}» — укажи --domain")
+    reference = load_reference()
+    print(report_md(reference, domain, result.query, evaluate(reference, domain, result=result)))
+
+
+if __name__ == "__main__":
+    main()
