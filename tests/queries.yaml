@@ -1,0 +1,89 @@
+# Тестовые запросы для проверки выдачи.
+#
+# Первые шесть — области датасета организаторов: жюри проверяет именно так — запрос по области → наш топ-15 →
+# сколько совпало с их технологиями. Их прогоняет `python -m src.model.eval_search --run-all`.
+# Последние два — вне датасета: там жюри оценивает выдачу экспертно, смотрим глазами.
+#
+# must_exclude — очевидно зрелые технологии области: их не должно быть в топ-15. Сопоставление — по английскому
+#   названию в карточке (без учёта регистра). Взяты из наших отрицательных примеров (src/model/training/negatives.csv).
+# expected_like — какого рода технологии ожидаем. Только общие описания: названия технологий из датасета сюда
+#   не пишем (репозиторий публичный, а ТЗ запрещает затачивать поиск под датасет).
+# notes — заметки после ручной проверки выдачи.
+
+queries:
+  - domain: Индустриальный ИИ
+    query: перспективные технологии индустриального ИИ
+    must_exclude: [predictive maintenance, digital twin, SCADA, manufacturing execution system, OPC UA,
+                   robotic process automation, industrial internet of things, machine vision]
+    expected_like:
+      - ИИ-агенты, действующие внутри заводских систем управления
+      - модели и датасеты, обученные на данных действующих производств
+      - автономные роботизированные операции, которые раньше требовали перепрограммирования
+    notes: ""
+
+  - domain: Инфраструктура ИИ
+    query: перспективные технологии инфраструктуры ИИ
+    must_exclude: [GPU cluster deep learning training, high bandwidth memory, tensor processing unit, Kubernetes,
+                   InfiniBand, cloud computing, data center liquid cooling, retrieval-augmented generation]
+    expected_like:
+      - новые принципы вычислений для ИИ (не классические GPU)
+      - новые архитектуры памяти и межсоединений для ИИ-кластеров
+      - новые способы питания и охлаждения ИИ-дата-центров
+    notes: ""
+
+  - domain: Роботы
+    query: перспективные технологии в робототехнике
+    must_exclude: [industrial robot arm, robotic vacuum cleaner, surgical robot, unmanned aerial vehicle,
+                   simultaneous localization and mapping, Robot Operating System, collaborative robots, lidar]
+    expected_like:
+      - новые источники данных для обучения роботов
+      - новые приводы и материалы вместо классических моторов и редукторов
+      - экосистема вокруг роботов: сертификация, страхование, маркетплейсы навыков
+    notes: ""
+
+  - domain: Финтех
+    query: перспективные решения в финтехе
+    must_exclude: [mobile banking, contactless payments, credit scoring machine learning, robo-advisor,
+                   peer-to-peer lending, open banking, buy now pay later, Bitcoin]
+    expected_like:
+      - платёжная инфраструктура для ИИ-агентов
+      - токенизация денег и активов на уровне банков
+      - защита онбординга и KYC от новых типов атак
+    notes: ""
+
+  - domain: Edge
+    query: перспективные технологии edge AI и граничных вычислений
+    must_exclude: [edge computing gateway, multi-access edge computing, LoRaWAN, Bluetooth Low Energy, MQTT,
+                   TensorFlow Lite on-device inference, smartphone face unlock, content delivery network]
+    expected_like:
+      - специализированные чипы для инференса на устройстве
+      - запуск и дообучение языковых моделей на телефонах и ноутбуках
+      - управление инференсом между устройством и облаком
+    notes: ""
+
+  - domain: Защита ИИ
+    query: перспективные технологии защиты ИИ
+    must_exclude: [spam filtering machine learning, face recognition, web application firewall,
+                   multi-factor authentication, OAuth 2.0, CAPTCHA, endpoint detection and response, password manager]
+    expected_like:
+      - безопасность ИИ-агентов: их идентичность, права, инструменты
+      - автоматическое тестирование и мониторинг моделей на атаки
+      - происхождение и целостность моделей и данных
+    notes: ""
+
+  # Вне датасета — экспертная оценка жюри
+  - domain: null
+    query: перспективные технологии в энергетике
+    must_exclude: [solar panels, wind turbines, lithium-ion batteries, smart meter, electric vehicles]
+    expected_like:
+      - новые химии накопителей энергии
+      - новые способы получения и хранения водорода
+    notes: ""
+
+  - domain: null
+    query: перспективные технологии в медицине
+    must_exclude: [telemedicine, electronic health records, MRI, CRISPR, mRNA vaccines]
+    expected_like:
+      - новые модели тканей и органов для тестирования лекарств
+      - ИИ для разработки молекул и белков
+    notes: ""

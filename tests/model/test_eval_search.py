@@ -80,3 +80,14 @@ def test_summary_counts_per_stage_and_total():
     md = summary_md(REF, per_domain)
     assert "| Защита ИИ | 2 | 2 | 1 |" in md
     assert "| **Всего** | 3 | **2** | **1** |" in md
+
+
+def test_queries_yaml_covers_all_dataset_domains_and_flags_mature():
+    from src.model.eval_search import DOMAIN_QUERIES, TEST_QUERIES, must_exclude_violations
+
+    assert set(DOMAIN_QUERIES) == {"Индустриальный ИИ", "Инфраструктура ИИ", "Роботы", "Финтех", "Edge", "Защита ИИ"}
+    assert all(q["query"] and q["must_exclude"] and q["expected_like"] for q in TEST_QUERIES)
+    result = SearchResult(
+        run_id="r", query=DOMAIN_QUERIES["Финтех"], top=[_card("Mobile banking", "x"), _card("zkKYC", "y")]
+    )
+    assert must_exclude_violations(result) == ["mobile banking"]
