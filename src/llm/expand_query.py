@@ -22,6 +22,69 @@ MAX_WORDS_IN_PHRASE = 6
 # Слова, из-за которых поиск сползает в рекламу и обзоры вместо исследований.
 _BANNED_WORDS = {"тренд", "тренды", "перспективный", "перспективные", "будущее", "прорыв", "trend", "trends", "future"}
 
+# Служебные слова: на смысл фразы не влияют, но мешают заметить, что две фразы — про одно и то же
+# («homomorphic encryption banking» и «homomorphic encryption for banking»).
+_FUNCTION_WORDS = {
+    "a",
+    "an",
+    "and",
+    "at",
+    "by",
+    "for",
+    "from",
+    "in",
+    "into",
+    "of",
+    "on",
+    "the",
+    "to",
+    "with",
+    "using",
+    "systems",
+    "system",
+    "applications",
+    "application",
+    "technologies",
+    "technology",
+    "в",
+    "во",
+    "и",
+    "для",
+    "из",
+    "к",
+    "на",
+    "о",
+    "об",
+    "по",
+    "при",
+    "с",
+    "со",
+    "у",
+    "системы",
+    "система",
+    "технологии",
+    "технология",
+    "применение",
+}
+
+# Модель иногда переносит в ответ подсказки из формата промпта — такие «фразы» выкидываем.
+_PLACEHOLDER_MARKS = ("<", ">", "фраза", "phrase")
+
+# Отрасли и общие направления: по такой фразе находятся обзоры рынка, а не конкретные технологии.
+# Промпт их запрещает, но модель иногда всё равно копирует их из списка «не годится».
+_TOO_BROAD = {
+    "энергетика",
+    "новые материалы",
+    "ии в медицине",
+    "роботы для склада",
+    "edge computing",
+    "edge ai",
+    "искусственный интеллект",
+    "машинное обучение",
+    "artificial intelligence",
+    "machine learning",
+}
+
 # Чем дополняем запрос, если LLM недоступна. Не перевод, а грубая подстраховка.
 _RU_SUFFIXES = ("", "ранние исследования", "пилотные проекты", "патенты", "методы", "прототипы", "архитектура")
 _EN_SUFFIXES = ("emerging technology", "early stage research", "novel method", "preprint", "patent")
@@ -52,7 +115,7 @@ async def expand_query(query: str, client: LLMClient | None = None) -> list[str]
 
 
 def _clean(phrases: list[str]) -> list[str]:
-    """Убрать мусор, дубли и слишком длинные фразы, сохранив порядок."""
+    """Убрать мусор, дубли (в том числе фразы-близнецы) и слишком длинные фразы, сохранив порядок."""
     out: list[str] = []
     seen: set[str] = set()
     for raw in phrases:
@@ -62,12 +125,35 @@ def _clean(phrases: list[str]) -> list[str]:
             continue
         if any(w.strip(",.").lower() in _BANNED_WORDS for w in words):
             continue
-        key = phrase.lower()
+        if _looks_like_placeholder(phrase):
+            log.warning("expand_query: модель вернула подсказку из формата промпта: %s", phrase)
+            continue
+        if phrase.lower() in _TOO_BROAD:
+            log.warning("expand_query: фраза — целое направление, а не технология: %s", phrase)
+            continue
+        key = _dedup_key(phrase)
         if key in seen:
             continue
         seen.add(key)
         out.append(phrase)
     return out
+
+
+def _looks_like_placeholder(phrase: str) -> bool:
+    """«<русская фраза 1>» — это не поисковая фраза, а скопированная подсказка из промпта."""
+    low = phrase.lower()
+    return any(mark in low for mark in _PLACEHOLDER_MARKS)
+
+
+def _dedup_key(phrase: str) -> str:
+    """Ключ склейки близнецов: без служебных слов и без порядка слов.
+
+    «homomorphic encryption banking» и «homomorphic encryption for banking systems» дадут один ключ —
+    искать по обеим бессмысленно, а место в наборе они занимают.
+    """
+    words = sorted(w.strip(",.-").lower() for w in phrase.split())
+    meaningful = [w for w in words if w and w not in _FUNCTION_WORDS]
+    return " ".join(meaningful or words)
 
 
 def _fallback_phrases(query: str) -> list[str]:
