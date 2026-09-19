@@ -1,10 +1,12 @@
 """Офлайн-тест всего конвейера на фикстуре: схема, топ-15 и ни одной выдуманной ссылки."""
 
+import asyncio
+
 import pytest
 
-from src.common.schemas import TOP_N, ScoredCandidate, SearchResult
+from src.common.schemas import TOP_N, Candidate, Document, ScoredCandidate, SearchResult, SourceType, TermStats
 from src.pipeline import deps
-from src.pipeline.run import STAGE_DONE, _log_near_misses, run
+from src.pipeline.run import NEUTRAL_SCORE, STAGE_DONE, _cards, _features, _log_near_misses, run
 
 
 @pytest.fixture(autouse=True)
@@ -76,3 +78,82 @@ def test_near_misses_are_logged(caplog: pytest.LogCaptureFixture):
     assert "Технология 15 0.85" in logged  # первый не попавший в топ-15
     assert "Технология 29" in logged  # показываем 15 ближайших
     assert "Технология 30" not in logged
+
+
+async def test_features_keep_partial_results(monkeypatch: pytest.MonkeyPatch):
+    """Статистика по части кандидатов не успела — признаки остальных не теряются."""
+
+    async def slow_for_one(term: str):
+        if term == "медленный термин":
+            await asyncio.sleep(10)
+        return TermStats(term=term, pubs_by_year={2025: 7})
+
+    monkeypatch.setattr("src.pipeline.deps.term_stats", slow_for_one)
+    monkeypatch.setattr("src.pipeline.run.STATS_BUDGET_S", 0.3)
+    candidates = [
+        Candidate(id="fast", name="быстрый термин", document_ids=["a"]),
+        Candidate(id="slow", name="медленный термин", document_ids=["a"]),
+    ]
+    docs = [Document(id="a", source="openalex", source_type=SourceType.PAPER, title="t", url="https://example.org/a")]
+
+    features = await _features(candidates, docs)
+
+    by_id = {f.candidate_id: f for f in features}
+    assert by_id["fast"].total_pubs == 7  # успел — статистика учтена
+    assert by_id["slow"].total_pubs is None  # не успел, но признаки по документам есть
+    assert by_id["slow"].distinct_sources == 1
+
+
+async def test_cards_backfill_to_fifteen():
+    """Кандидат без источников выбывает, а на его место берётся следующий — в выдаче ровно 15."""
+    candidates = [Candidate(id=f"c{i}", name=f"Технология {i}", document_ids=[]) for i in range(25)]
+    docs = []
+    for i, candidate in enumerate(candidates):
+        if i % 3 == 0:  # у каждого третьего кандидата документов нет — карточка не соберётся
+            continue
+        doc_id = f"d{i}"
+        candidate.document_ids.append(doc_id)
+        docs.append(
+            Document(
+                id=doc_id,
+                source="openalex",
+                source_type=SourceType.PAPER,
+                title=f"Работа {i}",
+                url=f"https://example.org/{doc_id}",
+            )
+        )
+    scored = [ScoredCandidate(candidate_id=c.id, name=c.name, score=1 - i / 100) for i, c in enumerate(candidates)]
+
+    cards = await _cards(scored, candidates, docs)
+
+    assert len(cards) == TOP_N
+    assert all(card.sources for card in cards)
+    # Порядок сохранён, пропущены только кандидаты без источников.
+    assert [c.candidate_id for c in cards[:3]] == ["c1", "c2", "c4"]
+
+
+async def test_fallback_ranking_when_model_fails(monkeypatch: pytest.MonkeyPatch):
+    """Модель упала — выдача не пустеет: ранжируем по числу документов с нейтральной уверенностью."""
+
+    def broken(*_: object) -> list:
+        raise RuntimeError("модель не загрузилась")
+
+    monkeypatch.setattr("src.pipeline.run.score", broken)
+
+    result = await run("перспективные решения в финтехе")
+
+    assert result.status == "done"
+    assert result.top, "выдача не должна быть пустой из-за падения модели"
+    assert all(card.score == NEUTRAL_SCORE for card in result.top)
+    documents_per_card = [len(card.sources) for card in result.top]
+    assert documents_per_card == sorted(documents_per_card, reverse=True)
+
+
+async def test_scored_field_is_filled():
+    """В SearchResult.scored попадают все кандидаты после отсева, по убыванию уверенности."""
+    result = await run("перспективные решения в финтехе")
+
+    assert len(result.scored) == result.candidates_found - len(result.excluded)
+    scores = [s.score for s in result.scored]
+    assert scores == sorted(scores, reverse=True)
+    assert {c.candidate_id for c in result.top} <= {s.candidate_id for s in result.scored}

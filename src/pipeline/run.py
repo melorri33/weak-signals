@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections import deque
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
 from uuid import uuid4
@@ -26,6 +27,7 @@ from src.common.schemas import (
     ScoredCandidate,
     SearchResult,
     SignalCard,
+    TermStats,
 )
 from src.features import compute
 from src.llm.cards import NoSourcesError, make_card
@@ -38,13 +40,16 @@ log = get_logger(__name__)
 
 T = TypeVar("T")
 
-# Бюджеты шагов в секундах. Замеры на MacBook Air M1 16 ГБ с qwen3:8b: расширение запроса
-# просит 25–40 с (модель выдаёт ~5 токенов/с), поэтому изначальные 15 с оказались нереальными.
+# Бюджеты шагов в секундах. Замеры на MacBook Air M1 16 ГБ: qwen3:4b просит на расширение запроса
+# 25–27 с, qwen3:8b — 45–96 с, поэтому изначальные 15 с оказались нереальными (таблица в README).
+# Скоринг синхронный и занимает миллисекунды, отдельный бюджет ему не нужен.
 EXPAND_BUDGET_S = 45.0
 CANDIDATES_BUDGET_S = 40.0
 STATS_BUDGET_S = 60.0
-SCORE_BUDGET_S = 5.0
 CARDS_BUDGET_S = 60.0
+
+# Уверенность запасного ранжирования, когда модель не отработала: ни за, ни против.
+NEUTRAL_SCORE = 0.5
 
 # Сколько кандидатов сразу за топ-15 показываем в логе прогона.
 NEAR_MISSES_IN_LOG = 15
@@ -107,9 +112,11 @@ async def run(
     kept, features_kept = _apply_filters(candidates, features, result)
     scored = _score(kept, features_kept)
 
+    result.scored = scored
+
     progress("собираем карточки")
     _log_near_misses(scored)
-    result.top = await _cards(scored[:TOP_N], candidates, docs)
+    result.top = await _cards(scored, candidates, docs)
     result.confident_signals = sum(card.score > CONFIDENT_THRESHOLD for card in result.top)
 
     result.status = "done"
@@ -127,28 +134,50 @@ async def run(
 
 
 async def _features(candidates: list[Candidate], docs: list[Document]) -> list[CandidateFeatures]:
-    """Статистика по каждому кандидату (параллельно) и признаки по ней."""
+    """Статистика по каждому кандидату и признаки по ней.
+
+    Бюджет общий на все кандидаты, но результат частичный: кто успел — тот со статистикой,
+    остальным считаем признаки по найденным документам. Раньше на таймауте терялась статистика
+    всех кандидатов сразу, и модель ранжировала вслепую.
+
+    Про лимиты источников (выяснили при обучении модели): техмедиа отвечают 403 на параллельные
+    запросы и их приходится звать очередью, поэтому 50 кандидатов могут не влезть в бюджет.
+    Это внутри term_stats (модуль Данных) — здесь мы лишь ограничиваем число одновременных вызовов
+    и переживаем недобор.
+    """
     semaphore = asyncio.Semaphore(STATS_CONCURRENCY)
 
-    async def stats_for(candidate: Candidate) -> CandidateFeatures:
+    async def stats_for(candidate: Candidate) -> tuple[str, TermStats | None]:
         async with semaphore:
             try:
-                stats = await deps.term_stats(candidate.name)
+                return candidate.id, await deps.term_stats(candidate.name)
             except Exception as exc:
                 log.warning("term_stats(%s) не отработал: %s", candidate.name, exc)
-                stats = None
-        return compute(candidate, docs, stats)
+                return candidate.id, None
 
-    gathered = await _with_budget(
-        "term_stats",
-        STATS_BUDGET_S,
-        asyncio.gather(*(stats_for(c) for c in candidates)),
-        default=[],
-    )
-    if gathered:
-        return list(gathered)
-    log.warning("Статистика не успела в бюджет — считаю признаки только по документам")
-    return [compute(c, docs, None) for c in candidates]
+    started = time.perf_counter()
+    tasks = [asyncio.create_task(stats_for(c)) for c in candidates]
+    done, pending = await asyncio.wait(tasks, timeout=STATS_BUDGET_S)
+    for task in pending:
+        task.cancel()
+    await asyncio.gather(*pending, return_exceptions=True)
+    log.info("Шаг term_stats: %.1f с из %.0f с бюджета", time.perf_counter() - started, STATS_BUDGET_S)
+
+    stats_by_id: dict[str, TermStats | None] = {}
+    for task in done:
+        try:
+            candidate_id, stats = task.result()
+        except Exception:
+            log.exception("Статистика по кандидату не получена")
+            continue
+        stats_by_id[candidate_id] = stats
+    if pending:
+        log.warning(
+            "Статистика не успела для %d кандидатов из %d — их признаки считаю только по документам",
+            len(pending),
+            len(candidates),
+        )
+    return [compute(c, docs, stats_by_id.get(c.id)) for c in candidates]
 
 
 def _apply_filters(
@@ -179,14 +208,20 @@ def _apply_filters(
 
 
 def _score(candidates: list[Candidate], features: list[CandidateFeatures]) -> list[ScoredCandidate]:
-    """Скоринг модели. Упал — прогон продолжаем без ранжирования."""
+    """Скоринг модели. Упал — ранжируем запасным способом, но выдачу не теряем."""
     if not candidates:
         return []
     try:
         return score(candidates, features)
     except Exception:
-        log.exception("model.score упал — выдача будет без уверенности модели")
-        return []
+        log.exception("model.score упал — ранжирую по числу документов, уверенность нейтральная")
+        return _ranking_by_documents(candidates)
+
+
+def _ranking_by_documents(candidates: list[Candidate]) -> list[ScoredCandidate]:
+    """Запасное ранжирование: чем больше документов у кандидата, тем выше. Уверенность нейтральная."""
+    ordered = sorted(candidates, key=lambda c: len(c.document_ids), reverse=True)
+    return [ScoredCandidate(candidate_id=c.id, name=c.name, score=NEUTRAL_SCORE) for c in ordered]
 
 
 def _log_near_misses(scored: list[ScoredCandidate]) -> None:
@@ -210,30 +245,47 @@ async def _cards(
     candidates: list[Candidate],
     docs: list[Document],
 ) -> list[SignalCard]:
-    """Карточки топа. Кандидат без проверенных источников в выдачу не идёт (требование ТЗ)."""
+    """Карточки топа. В выдаче должно быть ровно TOP_N: если карточка не собралась
+    (нет проверенных источников или ошибка), добираем следующего кандидата по списку.
+
+    Кандидат без источников в выдачу не идёт — это требование ТЗ, поэтому добор, а не заполнение
+    пустышкой. Если кандидаты кончились раньше, честно возвращаем меньше и пишем в лог.
+    """
     by_id = {c.id: c for c in candidates}
     docs_by_id = {d.id: d for d in docs}
-    semaphore = asyncio.Semaphore(CARDS_CONCURRENCY)
+    queue = deque(scored)
+    cards: list[SignalCard] = []
 
     async def card_for(item: ScoredCandidate) -> SignalCard | None:
         candidate = by_id.get(item.candidate_id)
         own_docs = [docs_by_id[i] for i in (candidate.document_ids if candidate else []) if i in docs_by_id]
-        async with semaphore:
-            try:
-                return await make_card(item, own_docs, name_ru=candidate.name_ru if candidate else None)
-            except NoSourcesError as exc:
-                log.warning("Карточка не собрана: %s", exc)
-            except Exception:
-                log.exception("Карточка для %s не собралась", item.candidate_id)
+        try:
+            return await make_card(item, own_docs, name_ru=candidate.name_ru if candidate else None)
+        except NoSourcesError as exc:
+            log.warning("Карточка не собрана: %s — беру следующего кандидата", exc)
+        except Exception:
+            log.exception("Карточка для %s не собралась — беру следующего кандидата", item.candidate_id)
         return None
 
-    cards = await _with_budget(
-        "make_card",
-        CARDS_BUDGET_S,
-        asyncio.gather(*(card_for(s) for s in scored)),
-        default=[],
-    )
-    return [c for c in cards if c is not None]
+    started = time.perf_counter()
+    try:
+        async with asyncio.timeout(CARDS_BUDGET_S):
+            while queue and len(cards) < TOP_N:
+                batch_size = min(CARDS_CONCURRENCY, TOP_N - len(cards), len(queue))
+                batch = [queue.popleft() for _ in range(batch_size)]
+                done = await asyncio.gather(*(card_for(item) for item in batch))
+                cards.extend(card for card in done if card is not None)
+    except TimeoutError:
+        log.error("Шаг make_card не успел за %.0f с — отдаю %d карточек", CARDS_BUDGET_S, len(cards))
+    log.info("Шаг make_card: %.1f с из %.0f с бюджета", time.perf_counter() - started, CARDS_BUDGET_S)
+    if len(cards) < TOP_N:
+        log.warning(
+            "В выдаче %d карточек вместо %d: кандидаты кончились или не собрались (осталось в очереди: %d)",
+            len(cards),
+            TOP_N,
+            len(queue),
+        )
+    return cards
 
 
 async def _with_budget(step: str, budget_s: float, work: Awaitable[T], default: T) -> T:
