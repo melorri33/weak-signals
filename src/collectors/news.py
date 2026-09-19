@@ -22,16 +22,34 @@ from xml.etree import ElementTree
 import httpx
 import yaml
 
-from src.collectors.http import safe_call
+from src.collectors.http import RateLimiter, safe_call
 from src.common.config import Settings
+from src.common.logs import get_logger
 from src.common.schemas import Document, SourceType
+
+log = get_logger(__name__)
 
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "news_feeds.yaml"
 
 # Сколько новостей берём из одной ленты: дальше начинается выдача «по касательной к фразе».
 PER_FEED_LIMIT = 20
 
+# Пауза между запросами к одной ленте: конвейер приходит с 15–20 фразами сразу, и издания
+# отвечают на такой залп 429. К разным лентам ходим по-прежнему параллельно.
+FEED_PAUSE_S = 0.7
+
 _TAG_RE = re.compile(r"<[^>]+>")
+_CYRILLIC_RE = re.compile(r"[а-яё]", re.IGNORECASE)
+
+# Лента ответила 429 — до конца прогона её не трогаем: дальше она всё равно отвечает отказом,
+# а каждая попытка занимает место в бюджете сбора.
+_exhausted: set[str] = set()
+_limiters: dict[str, RateLimiter] = {}
+
+
+def forget_exhausted_feeds() -> None:
+    """Забыть, какие ленты исчерпаны (тесты и новый прогон)."""
+    _exhausted.clear()
 
 
 @lru_cache(maxsize=1)
@@ -100,15 +118,33 @@ def parse_feed(xml: str, phrase: str, unwrap: str | None = None) -> list[Documen
     return docs
 
 
-async def _from_feed(feed: dict[str, str], phrase: str, settings: Settings, client: httpx.AsyncClient) -> list[str]:
+async def _from_feed(
+    feed: dict[str, str], phrase: str, settings: Settings, client: httpx.AsyncClient
+) -> list[Document]:
+    name = feed["name"]
+    if name in _exhausted:
+        return []
+    limiter = _limiters.setdefault(name, RateLimiter(interval_s=FEED_PAUSE_S))
+    await limiter.wait()
+    if name in _exhausted:  # исчерпалась, пока мы ждали очереди
+        return []
     url = feed["url"].format(query=phrase.replace(" ", "+"))
     r = await client.get(url, timeout=settings.source_timeout_s, follow_redirects=True)
+    if r.status_code == httpx.codes.TOO_MANY_REQUESTS:
+        _exhausted.add(name)
+        log.info("Лента %s просит не частить (429) — до конца прогона к ней не обращаемся", name)
+        return []
     r.raise_for_status()
     return parse_feed(r.text, phrase, feed.get("unwrap"))[:PER_FEED_LIMIT]
 
 
 async def search(phrase: str, settings: Settings, client: httpx.AsyncClient, errors: list[str]) -> list[Document]:
-    """Новости по фразе из всех лент сразу; упавшая лента не мешает остальным."""
+    """Новости по фразе из всех лент сразу; упавшая лента не мешает остальным.
+
+    Русские фразы в англоязычные ленты не отправляем: они ничего не находят, а лимит запросов тратят.
+    """
+    if _CYRILLIC_RE.search(phrase):
+        return []
     calls = [
         safe_call(f"news:{feed['name']}", lambda f=feed: _from_feed(f, phrase, settings, client), errors)
         for feed in feeds()

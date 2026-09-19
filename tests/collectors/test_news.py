@@ -81,7 +81,7 @@ def test_pubdate_formats(raw: str, expected: date | None):
 
 
 async def test_failing_feed_does_not_break_the_rest(settings, monkeypatch: pytest.MonkeyPatch):
-    """Одно издание отвечает 429 — остальные новости всё равно собираются, ошибка попадает в errors."""
+    """Одно издание отвечает ошибкой — остальные новости всё равно собираются, а ошибка попадает в errors."""
     monkeypatch.setattr(
         news,
         "feeds",
@@ -93,7 +93,7 @@ async def test_failing_feed_does_not_break_the_rest(settings, monkeypatch: pytes
 
     def handler(request: httpx.Request) -> httpx.Response:
         if "example.com" in str(request.url):
-            return httpx.Response(429)
+            return httpx.Response(500)
         return httpx.Response(200, content=raw_fixture("news_techcrunch_quantum_sensing.xml").encode("utf-8"))
 
     errors: list[str] = []
@@ -102,3 +102,37 @@ async def test_failing_feed_does_not_break_the_rest(settings, monkeypatch: pytes
 
     assert docs
     assert errors == ["news:падает"]
+
+
+async def test_russian_phrases_do_not_touch_english_feeds(settings, monkeypatch: pytest.MonkeyPatch):
+    """Русская фраза в англоязычной ленте ничего не находит, а лимит запросов тратит."""
+    monkeypatch.setattr(news, "feeds", lambda: [{"name": "издание", "url": "https://example.org/?s={query}"}])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("к ленте не должно быть ни одного запроса")
+
+    errors: list[str] = []
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        assert await news.search("модели на краю сети", settings, client, errors) == []
+    assert errors == []
+
+
+async def test_feed_answering_429_is_dropped_for_the_rest_of_the_run(settings, monkeypatch: pytest.MonkeyPatch):
+    """Конвейер приходит с 15–20 фразами: после отказа ленту больше не трогаем."""
+    monkeypatch.setattr(news, "feeds", lambda: [{"name": "устала", "url": "https://example.org/?s={query}"}])
+    monkeypatch.setattr(news, "FEED_PAUSE_S", 0)
+    news.forget_exhausted_feeds()
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        return httpx.Response(429)
+
+    errors: list[str] = []
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        for phrase in ("edge ai", "on-device inference", "tiny models"):
+            assert await news.search(phrase, settings, client, errors) == []
+
+    assert len(calls) == 1  # спросили один раз, дальше не ходим
+    assert errors == []  # это не ошибка источника, а его просьба не частить
+    news.forget_exhausted_feeds()
