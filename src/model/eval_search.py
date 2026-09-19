@@ -60,6 +60,8 @@ _BIG_COMPANIES = {
     "jpmorgan",
     "openai",
     "anthropic",
+    "claude",
+    "check point",
     "dell",
     "arm",
     "sony",
