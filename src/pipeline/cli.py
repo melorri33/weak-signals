@@ -16,12 +16,22 @@ from src.pipeline.run import run
 
 LINE = "─" * 78
 
+# Метка «--json без имени файла»: печатаем JSON в stdout, человекочитаемый отчёт не печатаем.
+_JSON_TO_STDOUT = "-"
+
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    result = asyncio.run(run(args.query, on_progress=_show_progress if args.progress else None))
+    to_stdout = args.json is _JSON_TO_STDOUT
+    progress = _show_progress if args.progress and not to_stdout else None
+    result = asyncio.run(run(args.query, on_progress=progress))
+    dump = result.model_dump_json(indent=2)
+    if to_stdout:
+        # JSON единственное, что уходит в stdout: так работает `--json > result.json`.
+        print(dump)
+        return 0 if result.status == "done" else 1
     if args.json:
-        Path(args.json).write_text(result.model_dump_json(indent=2), encoding="utf-8")
+        Path(args.json).write_text(dump, encoding="utf-8")
         print(f"\nРезультат целиком: {args.json}")
     _print_result(result)
     return 0 if result.status == "done" else 1
@@ -30,7 +40,13 @@ def main(argv: list[str] | None = None) -> int:
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Поиск слабых сигналов по свободному запросу")
     parser.add_argument("query", help="запрос, например: перспективные решения в финтехе")
-    parser.add_argument("--json", metavar="ФАЙЛ", help="куда сохранить полный SearchResult")
+    parser.add_argument(
+        "--json",
+        nargs="?",
+        const=_JSON_TO_STDOUT,
+        metavar="ФАЙЛ",
+        help="сохранить полный SearchResult в файл; без имени файла — напечатать JSON в stdout",
+    )
     parser.add_argument("--no-progress", dest="progress", action="store_false", help="не печатать шаги")
     parser.add_argument("--full", action="store_true", help="печатать все источники и причины")
     return parser.parse_args(argv)

@@ -1,7 +1,9 @@
 """Офлайн-тесты заглушки выделения кандидатов."""
 
-from src.common.schemas import Document, SourceType
-from src.pipeline.candidates import extract_candidates
+import pytest
+
+from src.common.schemas import Candidate, Document, SourceType
+from src.pipeline.candidates import extract_candidates, warn_on_long_names
 
 
 def _doc(doc_id: str, title: str) -> Document:
@@ -30,3 +32,29 @@ async def test_same_technology_collects_documents():
 
 async def test_no_documents_no_candidates():
     assert await extract_candidates([]) == []
+
+
+def test_long_name_is_reported(caplog: pytest.LogCaptureFixture):
+    """Длинное название: статистику точной фразой по нему не найти — предупреждаем, но кандидата не теряем.
+
+    Заглушка обрезает названия до трёх слов сама, поэтому проверка нужна для настоящей версии на LLM.
+    """
+    candidates = [
+        Candidate(id="onboarding", name="Защита онбординга от инъекционных атак и дипфейков"),
+        Candidate(id="na-ion", name="sodium-ion batteries"),
+    ]
+
+    with caplog.at_level("WARNING", logger="src.pipeline.candidates"):
+        returned = warn_on_long_names(candidates)
+
+    assert returned == candidates, "кандидатов не выбрасываем, только предупреждаем"
+    assert "Названия длиннее" in caplog.text
+    assert "Защита онбординга" in caplog.text
+    assert "sodium-ion batteries" not in caplog.text
+
+
+def test_short_names_do_not_warn(caplog: pytest.LogCaptureFixture):
+    with caplog.at_level("WARNING", logger="src.pipeline.candidates"):
+        warn_on_long_names([Candidate(id="na-ion", name="sodium-ion batteries")])
+
+    assert caplog.text == ""
