@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>You searched for quantum sensing | TechCrunch</title>
+	<atom:link href="https://techcrunch.com/?s=quantum+sensing&#038;feed=rss2" rel="self" type="application/rss+xml" />
+	<link>https://techcrunch.com/</link>
+	<description>Startup and Technology News</description>
+	<lastBuildDate>Sat, 19 Sep 2026 19:42:28 +0000</lastBuildDate>
+	<language>en-US</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	<generator>https://wordpress.org/?v=6.9.8</generator>
+
+<image>
+	<url>https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png?w=32</url>
+	<title>You searched for quantum sensing | TechCrunch</title>
+	<link>https://techcrunch.com/</link>
+	<width>32</width>
+	<height>32</height>
+</image> 
+	<item>
+		<title>With EU backing, QuantumDiamonds aims to speed up chip manufacturing</title>
+		<link>https://techcrunch.com/2026/07/08/with-eu-backing-quantumdiamonds-aims-to-speed-up-chip-manufacturing/</link>
+		
+		<dc:creator><![CDATA[Anna Heim]]></dc:creator>
+		<pubDate>Wed, 08 Jul 2026 20:29:50 +0000</pubDate>
+				<category><![CDATA[Startups]]></category>
+		<category><![CDATA[Technical University of Munich]]></category>
+		<category><![CDATA[European Chips Act]]></category>
+		<category><![CDATA[chip manufacturing]]></category>
+		<category><![CDATA[quantumdiamonds]]></category>
+		<category><![CDATA[quantum sensing]]></category>
+		<category><![CDATA[Exclusive]]></category>
+		<guid isPermaLink="false"></guid>
+
+					<description><![CDATA[Like its U.S. counterpart, the European Chips Act aims to foster the semiconductor industry — in part thanks to state subsidies. One of the beneficiaries is QuantumDiamonds, a German startup that applies a novel approach to inspecting chips.]]></description>
+		
+		
+		
+			</item>
+		<item>
+		<title>Quantum sensing startup Q-CTRL raises another $27.4M</title>
+		<link>https://techcrunch.com/2023/01/31/quantum-sensing-startup-q-ctrl-raises-another-27-4m/</link>
+		
+		<dc:creator><![CDATA[Kate Park]]></dc:creator>
+		<pubDate>Tue, 31 Jan 2023 13:00:22 +0000</pubDate>
+				<category><![CDATA[Startups]]></category>
+		<category><![CDATA[Australia]]></category>
+		<category><![CDATA[quantum computing]]></category>
+		<category><![CDATA[Salesforce Ventures]]></category>
+		<category><![CDATA[q-ctrl]]></category>
+		<guid isPermaLink="false"></guid>
+
+					<description><![CDATA[Two quantum-adjacent technologies &#8212; quantum sensing (QS) and quantum communication (Qcomm) &#8212; are as important as quantum computing hardware itself since they help make quantum computers function more accurately.  A Sydney-based startup called Q-CTRL has built quantum-sensing software that helps reduce errors on quantum computers. Today, the company announced that it has raised another $27.4 [&#8230;]]]></description>
+		
+		
+		
+			</item>
+		<item>
+		<title>India eyes global quantum computer push — and QpiAI is its chosen vehicle</title>
+		<link>https://techcrunch.com/2025/07/16/india-eyes-global-quantum-computer-push-and-qpiai-is-its-chosen-vehicle/</link>
+		
+		<dc:creator><![CDATA[Jagmeet Singh]]></dc:creator>
+		<pubDate>Wed, 16 Jul 2025 20:54:01 +0000</pubDate>
+				<category><![CDATA[AI]]></category>
+		<category><![CDATA[Hardware]]></category>
+		<category><![CDATA[Enterprise]]></category>
+		<category><![CDATA[National Quantum Mission]]></category>
+		<category><![CDATA[QpiAI]]></category>
+		<category><![CDATA[Avataar Ventures]]></category>
+		<category><![CDATA[quantum computing]]></category>
+		<guid isPermaLink="false"></guid>
+
+					<description><![CDATA[QpiAI, an Indian startup that integrates AI and quantum computing for enterprise use cases, has raised $32 million in a new funding round co-led by the Indian government.]]></description>
+		
+		
+		
+			</item></channel></rss>

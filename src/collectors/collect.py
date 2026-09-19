@@ -12,7 +12,7 @@ from itertools import zip_longest
 
 import httpx
 
-from src.collectors import arxiv, openalex
+from src.collectors import arxiv, news, openalex
 from src.collectors.dedupe import dedupe
 from src.collectors.http import safe_call, user_agent
 from src.common.config import Settings, get_settings
@@ -46,11 +46,14 @@ async def collect(phrases: list[str], limit: int = 500) -> list[Document]:
 async def _collect_phrase(
     phrase: str, settings: Settings, client: httpx.AsyncClient, errors: list[str]
 ) -> list[Document]:
-    openalex_docs, arxiv_docs = await asyncio.gather(
+    news_docs, openalex_docs, arxiv_docs = await asyncio.gather(
+        news.search(phrase, settings, client, errors),
         safe_call("openalex", lambda: openalex.search(phrase, settings, client), errors),
         safe_call("arxiv", lambda: arxiv.search(phrase, settings, client), errors),
     )
-    return _interleave(openalex_docs or [], arxiv_docs or [])
+    # Новости первыми: 71% источников датасета организаторов — техноновости, и именно в них
+    # живут ранние технологии (раунды стартапов, первые внедрения), которых ещё нет в науке.
+    return _interleave(news_docs, openalex_docs or [], arxiv_docs or [])
 
 
 def _interleave(*groups: list[Document]) -> list[Document]:

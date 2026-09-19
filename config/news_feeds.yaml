@@ -1,0 +1,30 @@
+# Ленты техномедиа для сбора новостей: то, откуда организаторы брали свои сигналы
+# (71% ссылок датасета — техноновости: TechCrunch, SiliconANGLE, The AI Insider, EE Times,
+# DatacenterDynamics, The Robot Report). Научные базы про раунды стартапов не пишут вообще,
+# поэтому без новостей мы такие технологии просто не находим.
+#
+# {query} подставляется поисковой фразой (пробелы → +). Каждая лента опрашивается отдельно,
+# упавшая лента не мешает остальным.
+#
+# Google News RSS сюда намеренно не входит: в самой ленте написано, что она отдаётся только
+# для личного некоммерческого чтения в ридере, а любое другое использование запрещено.
+#
+# unwrap: bing — ссылки в ленте Bing ведут на редирект apiclick.aspx, настоящий адрес лежит
+# в параметре url. Разворачиваем сами, без лишнего запроса: уровень доверия считается по домену.
+
+search_feeds:
+  # Поиск по конкретному изданию: лента отдаёт только материалы с нашей фразой.
+  - name: techcrunch
+    url: "https://techcrunch.com/?s={query}&feed=rss2"
+  - name: siliconangle
+    url: "https://siliconangle.com/?s={query}&feed=rss2"
+  - name: theaiinsider
+    url: "https://theaiinsider.tech/?s={query}&feed=rss2"
+  - name: venturebeat
+    url: "https://venturebeat.com/?s={query}&feed=rss2"
+
+  # Поиск сразу по всем изданиям: так в выдачу попадают отраслевые медиа, у которых нет
+  # собственного поиска в ленте (EE Times, DatacenterDynamics, The Robot Report и другие).
+  - name: bing_news
+    url: "https://www.bing.com/news/search?q=%22{query}%22&format=RSS"
+    unwrap: bing
