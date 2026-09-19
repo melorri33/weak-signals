@@ -73,6 +73,9 @@ class TermStats(BaseModel):
 
     term: str
     pubs_by_year: dict[int, int] = Field(default_factory=dict)
+    pubs_by_type: dict[str, int] | None = Field(
+        default=None, description="публикации по типам OpenAlex: article, preprint, review... (для доли препринтов)"
+    )
     patents_by_year: dict[int, int] | None = None
     news_by_year: dict[int, int] | None = None
     wikipedia_ru: bool | None = None

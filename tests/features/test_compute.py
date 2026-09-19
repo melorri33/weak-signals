@@ -52,3 +52,10 @@ def test_no_stats_gives_none_not_zero():
     assert f.has_wikipedia is None
     assert f.news_to_science_ratio == 0.0  # посчитано по документам: 0 новостей / 1 статья
     assert f.distinct_sources == 1
+
+
+def test_preprint_share_from_types():
+    cand = Candidate(id="c", name="c")
+    stats = TermStats(term="c", pubs_by_year={LAST: 10}, pubs_by_type={"preprint": 3, "article": 6, "review": 1})
+    assert compute(cand, [], stats).extra["preprint_share"] == 0.3
+    assert compute(cand, [], TermStats(term="c", pubs_by_year={LAST: 10})).extra["preprint_share"] is None
