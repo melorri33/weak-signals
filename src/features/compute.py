@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.common.schemas import Candidate, CandidateFeatures, Document, SourceType, TermStats
+from src.common.schemas import Candidate, CandidateFeatures, Document, SourceType, TermStats, TrustLevel
 
 # Типы источников, которые считаем «наукой» для отношения новости/наука.
 _SCIENCE_TYPES = {SourceType.PAPER, SourceType.PREPRINT, SourceType.PATENT}
@@ -49,8 +49,21 @@ def compute(candidate: Candidate, docs: list[Document], stats: TermStats | None)
         has_wikipedia=_any_true(stats.wikipedia_ru, stats.wikipedia_en) if stats else None,
         has_standard=(stats.standard_mentions > 0) if stats and stats.standard_mentions is not None else None,
         stage=None,
-        extra=_extra(pubs, news, stats.pubs_by_type if stats else None),
+        extra=_extra(pubs, news, stats.pubs_by_type if stats else None) | _trust_counts(own_docs),
     )
+
+
+def _trust_counts(own_docs: list[Document]) -> dict[str, float | None]:
+    """Сколько документов кандидата с известным доверием и сколько из них средних/высоких.
+
+    Нужно правилу шума (ТЗ): блоги, соцсети и пресс-релизы не могут быть единственным основанием.
+    Доверие не проставлено ни у одного документа — None (правило не срабатывает).
+    """
+    rated = [d for d in own_docs if d.trust is not None]
+    if not rated:
+        return {"docs_rated": None, "docs_trusted": None}
+    trusted = sum(d.trust in (TrustLevel.HIGH, TrustLevel.MEDIUM) for d in rated)
+    return {"docs_rated": float(len(rated)), "docs_trusted": float(trusted)}
 
 
 def _extra(
