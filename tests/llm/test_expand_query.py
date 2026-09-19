@@ -85,3 +85,25 @@ def test_clean_drops_whole_directions():
     """Отрасль и общее направление — не поисковая фраза: по ним находятся обзоры рынка."""
     phrases = _clean(["edge computing", "машинное обучение", "микроконтроллеры с нейросетями"])
     assert phrases == ["микроконтроллеры с нейросетями"]
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "passphrase-less authentication",  # «phrase» внутри слова
+        "key phrase extraction",  # «phrase» как отдельное слово, но без номера
+        "фразовые эмбеддинги для поиска",  # русское слово с тем же корнем
+    ],
+)
+def test_clean_keeps_terms_with_phrase_inside(phrase: str):
+    """Слово «phrase» встречается в нормальных терминах — выкидывать их нельзя."""
+    assert _clean([phrase]) == [phrase]
+
+
+@pytest.mark.parametrize(
+    "placeholder",
+    ["<русская фраза 1>", "<english phrase 2>", "русская фраза 3", "english phrase 4", "фраза1"],
+)
+def test_clean_drops_prompt_hints(placeholder: str):
+    """Подсказки из формата промпта: угловые скобки или «фраза N» / «phrase N»."""
+    assert _clean([placeholder, "натрий-ионные аккумуляторы"]) == ["натрий-ионные аккумуляторы"]
