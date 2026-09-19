@@ -59,10 +59,10 @@ def _patch_all(
 async def test_term_stats_fills_all_available_fields(monkeypatch: pytest.MonkeyPatch):
     _patch_all(monkeypatch)
 
-    stats = await term_stats_module.term_stats("machine unlearning")
+    stats = await term_stats_module.term_stats("solid-state battery")
 
     assert isinstance(stats, TermStats)
-    assert stats.term == "machine unlearning"
+    assert stats.term == "solid-state battery"
     assert stats.pubs_by_year == {2024: 5, 2025: 10}
     assert stats.pubs_by_type == {"article": 10}
     assert stats.distinct_orgs == 7
@@ -83,7 +83,7 @@ async def test_term_stats_records_failed_source_as_none_with_error(monkeypatch: 
 
     monkeypatch.setattr(openalex, "year_counts", broken)
 
-    stats = await term_stats_module.term_stats("machine unlearning")
+    stats = await term_stats_module.term_stats("solid-state battery")
 
     assert stats.pubs_by_year == {}  # None по контракту превращается в {}, не в 0
     assert "openalex_years" in stats.errors
@@ -93,8 +93,8 @@ async def test_term_stats_records_failed_source_as_none_with_error(monkeypatch: 
 async def test_term_stats_uses_cache_on_second_call(monkeypatch: pytest.MonkeyPatch):
     calls = _patch_all(monkeypatch)
 
-    await term_stats_module.term_stats("machine unlearning")
-    await term_stats_module.term_stats("machine unlearning")
+    await term_stats_module.term_stats("solid-state battery")
+    await term_stats_module.term_stats("solid-state battery")
 
     assert calls["n"] == 1  # второй вызов пришёл из кэша
 
@@ -102,17 +102,17 @@ async def test_term_stats_uses_cache_on_second_call(monkeypatch: pytest.MonkeyPa
 async def test_term_stats_int_keys_survive_cache_roundtrip(monkeypatch: pytest.MonkeyPatch):
     _patch_all(monkeypatch)
 
-    await term_stats_module.term_stats("machine unlearning")
-    stats = await term_stats_module.term_stats("machine unlearning")  # из кэша (JSON теряет типы ключей)
+    await term_stats_module.term_stats("solid-state battery")
+    stats = await term_stats_module.term_stats("solid-state battery")  # из кэша (JSON теряет типы ключей)
 
     assert all(isinstance(y, int) for y in stats.pubs_by_year)
     assert all(isinstance(y, int) for y in stats.news_by_year)
 
 
 @pytest.mark.network
-async def test_term_stats_machine_unlearning_matches_spec():
+async def test_term_stats_solid_state_battery_matches_spec():
     """Критерий готовности из спецификации term_stats: сотни работ за 2024-2025, 5 ключей новостей, есть в вики."""
-    stats = await term_stats_module.term_stats("machine unlearning")
+    stats = await term_stats_module.term_stats("solid-state battery")
 
     assert stats.pubs_by_year.get(2024, 0) > 100 or stats.pubs_by_year.get(2025, 0) > 100
     assert stats.news_by_year is not None and set(stats.news_by_year) == {2016, 2023, 2024, 2025, 2026}

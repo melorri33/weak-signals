@@ -18,9 +18,9 @@ def _mock_client(body: dict) -> httpx.AsyncClient:
 
 
 async def test_has_article_true_when_title_matches(settings):
-    body = json.loads(raw_fixture("wikipedia_en_machine_unlearning.json"))
+    body = json.loads(raw_fixture("wikipedia_en_solid_state_battery.json"))
     async with _mock_client(body) as client:
-        found = await wikipedia.has_article("machine unlearning", "en", settings, client)
+        found = await wikipedia.has_article("solid-state battery", "en", settings, client)
 
     assert found is True
 

@@ -53,9 +53,9 @@ async def test_search_collects_authors_and_organizations(settings):
 
 
 async def test_year_counts_only_digit_keys(settings):
-    body = raw_fixture("openalex_years_machine_unlearning.json")
+    body = raw_fixture("openalex_years_solid_state_battery.json")
     async with _mock_client(body) as client:
-        years = await openalex.year_counts("machine unlearning", settings, client)
+        years = await openalex.year_counts("solid-state battery", settings, client)
 
     assert years
     assert all(isinstance(y, int) for y in years)
@@ -63,18 +63,18 @@ async def test_year_counts_only_digit_keys(settings):
 
 
 async def test_type_counts_has_article_or_preprint(settings):
-    body = raw_fixture("openalex_types_machine_unlearning.json")
+    body = raw_fixture("openalex_types_solid_state_battery.json")
     async with _mock_client(body) as client:
-        types = await openalex.type_counts("machine unlearning", settings, client)
+        types = await openalex.type_counts("solid-state battery", settings, client)
 
     assert types
     assert set(types) & {"article", "preprint"}
 
 
 async def test_org_count_reads_groups_count(settings):
-    body = raw_fixture("openalex_orgs_machine_unlearning.json")
+    body = raw_fixture("openalex_orgs_solid_state_battery.json")
     async with _mock_client(body) as client:
-        n = await openalex.org_count("machine unlearning", settings, client)
+        n = await openalex.org_count("solid-state battery", settings, client)
 
     assert n > 0
 
@@ -88,9 +88,9 @@ async def test_search_uses_exact_phrase_filter(settings):
         return httpx.Response(200, json={"results": []})
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        await openalex.search("space data centers", settings, client)
+        await openalex.search("quantum sensing", settings, client)
 
-    assert seen["filter"] == 'title_and_abstract.search:"space data centers"'
+    assert seen["filter"] == 'title_and_abstract.search:"quantum sensing"'
 
 
 @pytest.mark.network

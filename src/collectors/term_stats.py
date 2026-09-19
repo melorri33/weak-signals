@@ -57,9 +57,7 @@ async def term_stats(term: str) -> TermStats:
         pubs_by_type = await _cached(
             "openalex_types", term, errors, lambda: openalex.type_counts(term, settings, client)
         )
-        distinct_orgs = await _cached(
-            "openalex_orgs", term, errors, lambda: openalex.org_count(term, settings, client)
-        )
+        distinct_orgs = await _cached("openalex_orgs", term, errors, lambda: openalex.org_count(term, settings, client))
         news_by_year = await _cached(
             "hn_news", term, errors, lambda: hackernews.news_by_year(term, settings, client), _int_keys
         )

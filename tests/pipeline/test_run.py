@@ -16,7 +16,15 @@ def _no_llm(monkeypatch: pytest.MonkeyPatch):
     async def phrases(query: str) -> list[str]:
         return [query, f"{query} patents"]
 
+    async def docs(phrases: list[str], limit: int) -> list[Document]:
+        return deps.fixture_documents()[:limit]
+
+    async def no_stats(term: str) -> None:
+        return None
+
     monkeypatch.setattr("src.pipeline.run.expand_query", phrases)
+    monkeypatch.setattr("src.pipeline.deps.collect", docs)
+    monkeypatch.setattr("src.pipeline.deps.term_stats", no_stats)
 
 
 async def test_full_run_on_fixture():

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.collectors import arxiv, cache
+from src.collectors import arxiv, cache, hackernews
 from src.collectors.http import RateLimiter
 from src.common.config import Settings
 
@@ -26,6 +26,12 @@ def settings() -> Settings:
 def _no_arxiv_rate_limit(monkeypatch: pytest.MonkeyPatch):
     """В проде arXiv просит паузу 3 с между запросами — в тестах она бы только всё замедляла."""
     monkeypatch.setattr(arxiv, "_rate_limiter", RateLimiter(interval_s=0))
+
+
+@pytest.fixture(autouse=True)
+def _no_hn_rate_limit(monkeypatch: pytest.MonkeyPatch):
+    """В проде HN просит паузу 0.3 с между любыми запросами — в тестах она бы только всё замедляла."""
+    monkeypatch.setattr(hackernews, "_rate_limiter", RateLimiter(interval_s=0))
 
 
 @pytest.fixture(autouse=True)

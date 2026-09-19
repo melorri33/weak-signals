@@ -49,6 +49,6 @@ async def test_search_quotes_exact_phrase(settings):
         return httpx.Response(200, content=b'<feed xmlns="http://www.w3.org/2005/Atom"></feed>')
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        await arxiv.search("space data centers", settings, client)
+        await arxiv.search("solid-state battery", settings, client)
 
-    assert seen["search_query"] == 'all:"space data centers"'
+    assert seen["search_query"] == 'all:"solid-state battery"'
