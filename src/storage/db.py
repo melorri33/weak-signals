@@ -41,6 +41,17 @@ def get_session() -> Session:
     return sessionmaker(bind=get_engine())()
 
 
+# База недоступна — не пробуем снова до конца прогона: сохранение вызывается на каждом шаге конвейера,
+# и каждая попытка ждала бы DB_CONNECT_TIMEOUT_S. На прогоне без Postgres это давало +30 секунд впустую.
+_db_down = False
+
+
+def forget_db_state() -> None:
+    """Забыть, что база была недоступна (тесты и смена настроек подключения)."""
+    global _db_down
+    _db_down = False
+
+
 def db_unavailable_ok(default_factory: Callable[[], T]) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """База недоступна — по README конвейер должен работать и без неё: лог и результат `default_factory()`.
 
@@ -50,10 +61,14 @@ def db_unavailable_ok(default_factory: Callable[[], T]) -> Callable[[Callable[..
     def decorator(fn: Callable[..., T]) -> Callable[..., T]:
         @wraps(fn)
         def wrapper(*args: object, **kwargs: object) -> T:
+            global _db_down
+            if _db_down:
+                return default_factory()
             try:
                 return fn(*args, **kwargs)
             except SQLAlchemyError as exc:
-                log.warning("база недоступна (%s): %s", fn.__name__, exc)
+                log.warning("база недоступна (%s): %s — дальше работаем без неё", fn.__name__, exc)
+                _db_down = True
                 return default_factory()
 
         return wrapper
