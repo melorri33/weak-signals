@@ -4,9 +4,9 @@ from src.common.schemas import Candidate, Document, SearchResult, SignalCard, So
 from src.model.eval_search import ReferenceItem, _split_companies, evaluate, match, report_md
 
 REF = [
-    ReferenceItem(1, "Защита MCP-серверов", "Защита ИИ", "MCP security", ["Invariant Labs", "mcp-scan"]),
-    ReferenceItem(2, "Red teaming как услуга", "Защита ИИ", "automated AI red teaming", ["Mindgard"]),
-    ReferenceItem(3, "Токенизированные депозиты", "Финтех", "tokenized deposits", ["Kinexys"]),
+    ReferenceItem(1, "Квантовые сенсоры", "Защита ИИ", "quantum sensing", ["Quantum Diamonds", "qsense"]),
+    ReferenceItem(2, "Твердотельные аккумуляторы", "Защита ИИ", "solid-state battery", ["Batterix"]),
+    ReferenceItem(3, "Натрий-ионные накопители", "Финтех", "sodium-ion storage", ["Natrion Grid"]),
 ]
 
 
@@ -37,15 +37,15 @@ def test_split_companies_drops_russian_notes():
 
 
 def test_match_by_company_and_term_with_word_boundaries():
-    hits = {i.id: by for i, by in match("Mindgard raises $30M; new MCP security scanner", REF)}
-    assert hits == {2: "Mindgard", 1: "термин «MCP security»"}
-    assert match("mcp-scanner released", REF) == []  # «mcp-scan» не должен совпасть с «mcp-scanner»
+    hits = {i.id: by for i, by in match("Batterix raises $30M; new quantum sensing scanner", REF)}
+    assert hits == {2: "Batterix", 1: "термин «quantum sensing»"}
+    assert match("qsensor released", REF) == []  # «qsense» не должен совпасть с «qsensor»
 
 
 def test_evaluate_shows_where_items_are_lost():
-    docs = [Document(id="a", source="rss", source_type=SourceType.NEWS, title="Invariant Labs and Mindgard", url="u")]
-    cands = [Candidate(id="c1", name="MCP security")]
-    result = SearchResult(run_id="r", query="q", top=[_card("MCP server scanners", "Invariant Labs launches mcp-scan")])
+    docs = [Document(id="a", source="rss", source_type=SourceType.NEWS, title="Quantum Diamonds and Batterix", url="u")]
+    cands = [Candidate(id="c1", name="quantum sensing")]
+    result = SearchResult(run_id="r", query="q", top=[_card("quantum sensors", "Quantum Diamonds launches qsense")])
 
     stages = evaluate(REF, "Защита ИИ", result=result, documents=docs, candidates=cands)
 
@@ -55,7 +55,7 @@ def test_evaluate_shows_where_items_are_lost():
         ("топ-15", [1]),
     ]
     md = report_md(REF, "Защита ИИ", "q", stages)
-    assert "✅ Защита MCP-серверов" in md and "❌ Red teaming как услуга" in md
+    assert "✅ Квантовые сенсоры" in md and "❌ Твердотельные аккумуляторы" in md
 
 
 def test_scored_stage_separates_found_but_ranked_low():
@@ -63,7 +63,7 @@ def test_scored_stage_separates_found_but_ranked_low():
 
     scored = [
         ScoredCandidate(candidate_id=f"c{i}", name=n, score=0.9 - i / 100)
-        for i, n in enumerate(["x", "Mindgard platform"])
+        for i, n in enumerate(["x", "Batterix platform"])
     ]
     result = SearchResult(run_id="r", query="q", top=[], scored=scored)
     stages = {s.stage: sorted(s.found) for s in evaluate(REF, "Защита ИИ", result=result)}
@@ -88,6 +88,6 @@ def test_queries_yaml_covers_all_dataset_domains_and_flags_mature():
     assert set(DOMAIN_QUERIES) == {"Индустриальный ИИ", "Инфраструктура ИИ", "Роботы", "Финтех", "Edge", "Защита ИИ"}
     assert all(q["query"] and q["must_exclude"] and q["expected_like"] for q in TEST_QUERIES)
     result = SearchResult(
-        run_id="r", query=DOMAIN_QUERIES["Финтех"], top=[_card("Mobile banking", "x"), _card("zkKYC", "y")]
+        run_id="r", query=DOMAIN_QUERIES["Финтех"], top=[_card("Mobile banking", "x"), _card("sodium-ion storage", "y")]
     )
     assert must_exclude_violations(result) == ["mobile banking"]
