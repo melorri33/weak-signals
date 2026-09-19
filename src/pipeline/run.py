@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Callable, Coroutine
-from typing import Any, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 from uuid import uuid4
 
 from src.common.config import get_settings
@@ -215,7 +215,7 @@ async def _cards(
     return [c for c in cards if c is not None]
 
 
-async def _with_budget(step: str, budget_s: float, work: Coroutine[Any, Any, T], default: T) -> T:
+async def _with_budget(step: str, budget_s: float, work: Awaitable[T], default: T) -> T:
     """Выполнить шаг в рамках бюджета. Не успел или упал — вернуть default и жить дальше."""
     try:
         async with asyncio.timeout(budget_s):
