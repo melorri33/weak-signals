@@ -236,7 +236,11 @@ async def _cards(
 
 
 async def _with_budget(step: str, budget_s: float, work: Awaitable[T], default: T) -> T:
-    """Выполнить шаг в рамках бюджета. Не успел или упал — вернуть default и жить дальше."""
+    """Выполнить шаг в рамках бюджета. Не успел или упал — вернуть default и жить дальше.
+
+    Время каждого шага пишем в лог: по нему видно, где конвейер упирается в бюджет.
+    """
+    started = time.perf_counter()
     try:
         async with asyncio.timeout(budget_s):
             return await work
@@ -244,6 +248,8 @@ async def _with_budget(step: str, budget_s: float, work: Awaitable[T], default: 
         log.error("Шаг %s не успел за %.0f с — идём дальше", step, budget_s)
     except Exception:
         log.exception("Шаг %s упал — идём дальше", step)
+    finally:
+        log.info("Шаг %s: %.1f с из %.0f с бюджета", step, time.perf_counter() - started, budget_s)
     return default
 
 
