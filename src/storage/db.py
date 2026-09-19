@@ -1,19 +1,35 @@
-"""Подключение к PostgreSQL. save_documents/get_documents — отдельным PR (дни 3-4)."""
+"""Подключение к базе. save_documents/get_documents/save_search_result/get_search_result — в
+src/storage/documents.py и search_results.py."""
 
 from __future__ import annotations
 
-from functools import lru_cache
+from collections.abc import Callable
+from functools import lru_cache, wraps
+from typing import TypeVar
 
 from sqlalchemy import Engine, create_engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from src.common.config import get_settings
+from src.common.logs import get_logger
 from src.storage.models import Base
+
+log = get_logger(__name__)
+
+T = TypeVar("T")
+
+# Без этого таймаута недоступный Postgres не падает быстро, а виснет на сетевом таймауте ОС —
+# на практике это оказалось ~50 минут на весь офлайн-прогон тестов вместо секунд. SQLite (тесты)
+# такой параметр не понимает, поэтому передаём его только для postgres.
+DB_CONNECT_TIMEOUT_S = 2
 
 
 @lru_cache
 def get_engine() -> Engine:
-    return create_engine(get_settings().database_url)
+    url = get_settings().database_url
+    connect_args = {"connect_timeout": DB_CONNECT_TIMEOUT_S} if url.startswith("postgresql") else {}
+    return create_engine(url, connect_args=connect_args)
 
 
 def init_db() -> None:
@@ -23,3 +39,23 @@ def init_db() -> None:
 
 def get_session() -> Session:
     return sessionmaker(bind=get_engine())()
+
+
+def db_unavailable_ok(default_factory: Callable[[], T]) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """База недоступна — по README конвейер должен работать и без неё: лог и результат `default_factory()`.
+
+    Фабрика, а не готовое значение — иначе один и тот же список/словарь расшарился бы между вызовами.
+    """
+
+    def decorator(fn: Callable[..., T]) -> Callable[..., T]:
+        @wraps(fn)
+        def wrapper(*args: object, **kwargs: object) -> T:
+            try:
+                return fn(*args, **kwargs)
+            except SQLAlchemyError as exc:
+                log.warning("база недоступна (%s): %s", fn.__name__, exc)
+                return default_factory()
+
+        return wrapper
+
+    return decorator
