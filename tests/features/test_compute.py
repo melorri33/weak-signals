@@ -59,3 +59,10 @@ def test_preprint_share_from_types():
     stats = TermStats(term="c", pubs_by_year={LAST: 10}, pubs_by_type={"preprint": 3, "article": 6, "review": 1})
     assert compute(cand, [], stats).extra["preprint_share"] == 0.3
     assert compute(cand, [], TermStats(term="c", pubs_by_year={LAST: 10})).extra["preprint_share"] is None
+
+
+def test_wikipedia_known_absent_is_false_not_none():
+    cand = Candidate(id="c", name="c")
+    assert compute(cand, [], TermStats(term="c", wikipedia_en=False)).has_wikipedia is False
+    assert compute(cand, [], TermStats(term="c", wikipedia_en=False, wikipedia_ru=True)).has_wikipedia is True
+    assert compute(cand, [], TermStats(term="c")).has_wikipedia is None

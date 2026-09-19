@@ -101,8 +101,9 @@ def _news_to_science(news_total: int | None, total_pubs: int | None, own_docs: l
 
 
 def _any_true(*flags: bool | None) -> bool | None:
+    """True, если хоть один источник сказал «да»; False, если хоть один сказал «нет», а остальные молчат."""
     if any(f is True for f in flags):
         return True
-    if all(f is False for f in flags):
+    if any(f is False for f in flags):
         return False
     return None
