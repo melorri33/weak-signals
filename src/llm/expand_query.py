@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel, Field
 
 from src.common.logs import get_logger
@@ -67,8 +69,10 @@ _FUNCTION_WORDS = {
     "применение",
 }
 
-# Модель иногда переносит в ответ подсказки из формата промпта — такие «фразы» выкидываем.
-_PLACEHOLDER_MARKS = ("<", ">", "фраза", "phrase")
+# Модель иногда переносит в ответ подсказки из формата промпта («<русская фраза 1>») — их выкидываем.
+# Ловим только угловые скобки и «фраза N» / «phrase N»: просто слово «phrase» встречается в нормальных
+# терминах («key phrase extraction», «passphrase-less authentication»), и выкидывать их нельзя.
+_PLACEHOLDER_RE = re.compile(r"[<>]|\b(?:фраза|phrase)\s*\d", re.IGNORECASE)
 
 # Отрасли и общие направления: по такой фразе находятся обзоры рынка, а не конкретные технологии.
 # Промпт их запрещает, но модель иногда всё равно копирует их из списка «не годится».
@@ -141,8 +145,7 @@ def _clean(phrases: list[str]) -> list[str]:
 
 def _looks_like_placeholder(phrase: str) -> bool:
     """«<русская фраза 1>» — это не поисковая фраза, а скопированная подсказка из промпта."""
-    low = phrase.lower()
-    return any(mark in low for mark in _PLACEHOLDER_MARKS)
+    return _PLACEHOLDER_RE.search(phrase) is not None
 
 
 def _dedup_key(phrase: str) -> str:
