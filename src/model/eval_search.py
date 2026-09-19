@@ -9,6 +9,7 @@
 Сопоставление автоматическое и приблизительное — спорные случаи смотреть глазами (отчёт перечисляет, что с чем совпало).
 
 Запуск: python -m src.model.eval_search result.json [--domain Финтех]
+        python -m src.model.eval_search --run-all   # все 6 областей → data/search_eval.md
 """
 
 from __future__ import annotations
@@ -196,11 +197,57 @@ def _domain_from_query(query: str) -> str | None:
     return next((d for d, q in DOMAIN_QUERIES.items() if q == query), None)
 
 
+def summary_md(reference: list[ReferenceItem], per_domain: dict[str, list[StageReport]]) -> str:
+    """Сводка по всем областям: сколько технологий датасета дошло до каждого шага."""
+    stage_names = list(dict.fromkeys(s.stage for stages in per_domain.values() for s in stages))
+    lines = ["| Область | В датасете | " + " | ".join(stage_names) + " |", "| --- " * (len(stage_names) + 2) + "|"]
+    totals = dict.fromkeys(stage_names, 0)
+    n_total = 0
+    for domain, stages in per_domain.items():
+        n = sum(1 for i in reference if i.domain == domain)
+        n_total += n
+        found = {s.stage: len(s.found) for s in stages}
+        for name in stage_names:
+            totals[name] += found.get(name, 0)
+        lines.append(f"| {domain} | {n} | " + " | ".join(str(found.get(name, "—")) for name in stage_names) + " |")
+    lines.append(f"| **Всего** | {n_total} | " + " | ".join(f"**{totals[n]}**" for n in stage_names) + " |")
+    return "\n".join(lines) + "\n"
+
+
+async def run_all(out_dir: Path) -> str:
+    """Прогнать конвейер по всем областям датасета, сохранить результаты и собрать отчёт."""
+    from src.pipeline.run import run  # импорт здесь: оценка одного JSON не должна тянуть конвейер
+
+    reference = load_reference()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    per_domain: dict[str, list[StageReport]] = {}
+    sections = []
+    for domain, query in DOMAIN_QUERIES.items():
+        result = await run(query)
+        (out_dir / f"{domain}.json").write_text(result.model_dump_json(indent=2), encoding="utf-8")
+        per_domain[domain] = evaluate(reference, domain, result=result)
+        sections.append(report_md(reference, domain, query, per_domain[domain]))
+    return "\n".join(["# Проверка поиска «как у жюри»", "", summary_md(reference, per_domain), *sections])
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Сколько технологий датасета попало в топ-15")
-    ap.add_argument("result", type=Path, help="SearchResult в JSON")
+    ap.add_argument("result", type=Path, nargs="?", help="SearchResult в JSON")
     ap.add_argument("--domain", choices=list(DOMAIN_QUERIES), help="область датасета (иначе — по тексту запроса)")
+    ap.add_argument("--run-all", action="store_true", help="прогнать конвейер по всем 6 областям и собрать отчёт")
     args = ap.parse_args()
+    if args.run_all:
+        import asyncio
+
+        report = asyncio.run(run_all(DATA / "search_runs"))
+        # В data/, а не в reports/: отчёт перечисляет все технологии датасета, а репозиторий публичный.
+        path = DATA / "search_eval.md"
+        path.write_text(report, encoding="utf-8")
+        print(report)
+        print(f"Отчёт: {path}; результаты прогонов: {DATA / 'search_runs'}")
+        return
+    if args.result is None:
+        ap.error("укажи файл результата или --run-all")
     result = SearchResult.model_validate_json(args.result.read_text(encoding="utf-8"))
     domain = args.domain or _domain_from_query(result.query)
     if domain is None:

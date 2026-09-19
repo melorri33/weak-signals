@@ -68,3 +68,15 @@ def test_scored_stage_separates_found_but_ranked_low():
     result = SearchResult(run_id="r", query="q", top=[], scored=scored)
     stages = {s.stage: sorted(s.found) for s in evaluate(REF, "Защита ИИ", result=result)}
     assert stages == {"все проскоренные": [2], "топ-15": []}
+
+
+def test_summary_counts_per_stage_and_total():
+    from src.model.eval_search import StageReport, summary_md
+
+    per_domain = {
+        "Защита ИИ": [StageReport("кандидаты", {1: "x", 2: "y"}), StageReport("топ-15", {1: "x"})],
+        "Финтех": [StageReport("кандидаты", {}), StageReport("топ-15", {})],
+    }
+    md = summary_md(REF, per_domain)
+    assert "| Защита ИИ | 2 | 2 | 1 |" in md
+    assert "| **Всего** | 3 | **2** | **1** |" in md
