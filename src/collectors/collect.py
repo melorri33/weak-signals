@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+from itertools import zip_longest
 
 import httpx
 
@@ -49,4 +50,10 @@ async def _collect_phrase(
         safe_call("openalex", lambda: openalex.search(phrase, settings, client), errors),
         safe_call("arxiv", lambda: arxiv.search(phrase, settings, client), errors),
     )
-    return (openalex_docs or []) + (arxiv_docs or [])
+    return _interleave(openalex_docs or [], arxiv_docs or [])
+
+
+def _interleave(*groups: list[Document]) -> list[Document]:
+    """По одному документу из каждого источника по кругу — иначе при обрезке по limit
+    источник с большей выдачей (OpenAlex, per_page=200) вытесняет остальные ещё до дедупликации."""
+    return [doc for row in zip_longest(*groups) for doc in row if doc is not None]
