@@ -16,7 +16,18 @@ def _no_llm(monkeypatch: pytest.MonkeyPatch):
     async def phrases(query: str) -> list[str]:
         return [query, f"{query} patents"]
 
+    async def docs(phrases: list[str], limit: int) -> list[Document]:
+        return deps.fixture_documents()[:limit]
+
+    async def no_stats(term: str) -> None:
+        return None
+
     monkeypatch.setattr("src.pipeline.run.expand_query", phrases)
+    monkeypatch.setattr("src.pipeline.deps.collect", docs)
+    monkeypatch.setattr("src.pipeline.deps.term_stats", no_stats)
+    # Хранилище тоже не трогаем: без запущенного Postgres каждое сохранение ждёт таймаут подключения.
+    monkeypatch.setattr("src.pipeline.deps.save_documents", lambda docs: None)
+    monkeypatch.setattr("src.pipeline.deps.save_search_result", lambda result: None)
 
 
 async def test_full_run_on_fixture():
