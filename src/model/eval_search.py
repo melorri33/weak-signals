@@ -21,21 +21,27 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import yaml
+
 from src.common.schemas import Candidate, Document, SearchResult
 from src.model.dataset import load_signals
 
 DATA = Path("data")
 TERMS_PATH = DATA / "positive_terms.csv"
+QUERIES_PATH = Path(__file__).resolve().parents[2] / "tests" / "queries.yaml"
 
+# Тестовые запросы (tests/queries.yaml); у запросов по областям датасета есть domain.
+TEST_QUERIES: list[dict] = yaml.safe_load(QUERIES_PATH.read_text(encoding="utf-8"))["queries"]
 # Запрос жюри по каждой области датасета — наш вариант формулировки (точных формулировок жюри мы не знаем).
-DOMAIN_QUERIES: dict[str, str] = {
-    "Индустриальный ИИ": "перспективные технологии индустриального ИИ",
-    "Инфраструктура ИИ": "перспективные технологии инфраструктуры ИИ",
-    "Роботы": "перспективные технологии в робототехнике",
-    "Финтех": "перспективные решения в финтехе",
-    "Edge": "перспективные технологии edge AI и граничных вычислений",
-    "Защита ИИ": "перспективные технологии защиты ИИ",
-}
+DOMAIN_QUERIES: dict[str, str] = {q["domain"]: q["query"] for q in TEST_QUERIES if q.get("domain")}
+MUST_EXCLUDE: dict[str, list[str]] = {q["query"]: q.get("must_exclude", []) for q in TEST_QUERIES}
+
+
+def must_exclude_violations(result: SearchResult) -> list[str]:
+    """Очевидно зрелые технологии из tests/queries.yaml, которые всё-таки попали в топ-15."""
+    names = [f"{c.name}\n{c.name_ru or ''}" for c in result.top]
+    return [m for m in MUST_EXCLUDE.get(result.query, []) if any(_mentions(n, m) for n in names)]
+
 
 # Крупные компании встречаются в новостях о чём угодно — по ним совпадение ничего не доказывает.
 _BIG_COMPANIES = {
@@ -226,7 +232,10 @@ async def run_all(out_dir: Path) -> str:
         result = await run(query)
         (out_dir / f"{domain}.json").write_text(result.model_dump_json(indent=2), encoding="utf-8")
         per_domain[domain] = evaluate(reference, domain, result=result)
-        sections.append(report_md(reference, domain, query, per_domain[domain]))
+        section = report_md(reference, domain, query, per_domain[domain])
+        if violations := must_exclude_violations(result):
+            section += f"\n⚠️ В топ-15 попало очевидно зрелое (must_exclude): {', '.join(violations)}\n"
+        sections.append(section)
     return "\n".join(["# Проверка поиска «как у жюри»", "", summary_md(reference, per_domain), *sections])
 
 
