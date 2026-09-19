@@ -18,6 +18,11 @@ log = get_logger(__name__)
 MAX_CANDIDATES = 60
 WORDS_IN_NAME = 3
 
+# По name ищется статистика точной фразой («machine unlearning» в OpenAlex и техмедиа), а модель
+# училась на терминах из 2–4 английских слов. Длинная придуманная фраза даст ноль публикаций,
+# признаки окажутся пустыми и кандидат потеряется — поэтому предупреждаем в логе.
+MAX_WORDS_IN_TERM = 5
+
 # Служебные слова: с них название технологии не начинается и смысла не несут.
 _STOPWORDS = {
     "a",
@@ -75,7 +80,26 @@ async def extract_candidates(docs: list[Document]) -> list[Candidate]:
         elif doc.id not in candidate.document_ids:
             candidate.document_ids.append(doc.id)
     candidates = sorted(by_key.values(), key=lambda c: len(c.document_ids), reverse=True)[:MAX_CANDIDATES]
+    warn_on_long_names(candidates)
     log.info("Кандидатов из %d документов: %d", len(docs), len(candidates))
+    return candidates
+
+
+def warn_on_long_names(candidates: list[Candidate]) -> list[Candidate]:
+    """Предупредить о названиях, по которым статистику точной фразой найти не получится.
+
+    Кандидатов не выбрасываем: статистика — не единственный источник признаков, а терять технологию
+    из-за формы названия хуже, чем считать её признаки по найденным документам.
+    """
+    long_names = [c.name for c in candidates if len(c.name.split()) > MAX_WORDS_IN_TERM]
+    if long_names:
+        log.warning(
+            "Названия длиннее %d слов — статистика по точной фразе будет пустой (%d из %d): %s",
+            MAX_WORDS_IN_TERM,
+            len(long_names),
+            len(candidates),
+            "; ".join(long_names[:5]),
+        )
     return candidates
 
 
