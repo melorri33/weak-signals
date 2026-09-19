@@ -96,6 +96,8 @@
 | ROC-AUC | 0.88 |
 | PR-AUC | 0.71 (случайная модель — 0.28) |
 
+Графики — матрица ошибок, ROC/PR-кривые, распределения признаков, SHAP по всем примерам — в [`reports/model_report.md`](../reports/model_report.md) (собирается `python -m src.model.report`).
+
 Доля верных ответов по типам: слабые сигналы — 72%, зрелые — 91%, шум — 91%, хайп — 86%, массовые растущие — 75%.
 
 **Как мы шли к этим числам.** Честность метрики для нас важнее её величины, поэтому мы искали, где модель может «жульничать», и устраняли это:
@@ -135,5 +137,6 @@ PYTHONPATH=. python notebooks/01_openalex_probe.py        # публикации
 PYTHONPATH=. python notebooks/02_attention_stats.py       # Hacker News, Википедия
 PYTHONPATH=. python notebooks/04_openalex_types_orgs.py   # типы публикаций
 python -m src.model.train                                 # обучение, отчёт reports/metrics.md
+python -m src.model.report                                # графики и reports/model_report.md
 pytest -m "not network"                                   # тесты
 ```
