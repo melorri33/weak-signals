@@ -28,7 +28,10 @@ T = TypeVar("T", bound=BaseModel)
 REQUEST_TIMEOUT_S = 180.0
 PING_TIMEOUT_S = 3.0
 TEMPERATURE = 0.2
-NUM_PREDICT = 2048
+# Потолок длины ответа. Замер показал: без JSON-схемы модель не останавливается и упирается
+# в потолок — при 2048 токенах это 4 минуты на один вызов. Держим потолок близко к нужной длине
+# и поднимаем его точечно там, где ответ действительно длинный (подробный отчёт по сигналу).
+NUM_PREDICT = 800
 KEEP_ALIVE = "10m"
 
 # Сколько раз просим модель переделать ответ, если он не прошёл проверку схемой.
@@ -57,7 +60,14 @@ class LLMClient:
             )
         return cls(model=s.llm_model, provider=s.llm_provider, base_url=s.ollama_url.rstrip("/"))
 
-    async def ask_json(self, step: str, prompt: str, schema: type[T], system: str | None = None) -> T:
+    async def ask_json(
+        self,
+        step: str,
+        prompt: str,
+        schema: type[T],
+        system: str | None = None,
+        max_tokens: int = NUM_PREDICT,
+    ) -> T:
         """Спросить модель и получить ответ, разобранный в модель pydantic.
 
         Ollama принимает JSON-схему в поле format, но гарантий нет — поэтому проверяем сами
@@ -67,7 +77,7 @@ class LLMClient:
         json_schema = schema.model_json_schema()
         last_error = ""
         for attempt in range(RETRIES + 1):
-            raw = await self._chat(step=step, messages=messages, json_schema=json_schema)
+            raw = await self._chat(step=step, messages=messages, json_schema=json_schema, max_tokens=max_tokens)
             try:
                 return schema.model_validate_json(raw)
             except (ValidationError, ValueError) as exc:
@@ -87,9 +97,9 @@ class LLMClient:
                 ]
         raise LLMError(f"шаг {step}: ответ не прошёл схему после {RETRIES + 1} попыток: {last_error[:300]}")
 
-    async def ask_text(self, step: str, prompt: str, system: str | None = None) -> str:
+    async def ask_text(self, step: str, prompt: str, system: str | None = None, max_tokens: int = NUM_PREDICT) -> str:
         """Свободный текст без схемы (например, подробный отчёт по сигналу в markdown)."""
-        return await self._chat(step=step, messages=_messages(prompt, system), json_schema=None)
+        return await self._chat(step=step, messages=_messages(prompt, system), json_schema=None, max_tokens=max_tokens)
 
     async def is_available(self) -> bool:
         """Живёт ли Ollama и загружена ли наша модель (для GET /health)."""
@@ -106,7 +116,13 @@ class LLMClient:
             return False
         return True
 
-    async def _chat(self, step: str, messages: list[dict[str, str]], json_schema: dict[str, Any] | None) -> str:
+    async def _chat(
+        self,
+        step: str,
+        messages: list[dict[str, str]],
+        json_schema: dict[str, Any] | None,
+        max_tokens: int = NUM_PREDICT,
+    ) -> str:
         """Один вызов /api/chat. Пишет запись в журнал моделей даже если вызов упал."""
         body: dict[str, Any] = {
             "model": self.model,
@@ -115,7 +131,7 @@ class LLMClient:
             "keep_alive": KEEP_ALIVE,
             # Qwen3 по умолчанию «рассуждает» — это втрое дольше. Для наших задач это не нужно.
             "think": False,
-            "options": {"temperature": TEMPERATURE, "num_predict": NUM_PREDICT},
+            "options": {"temperature": TEMPERATURE, "num_predict": max_tokens},
         }
         if json_schema is not None:
             body["format"] = json_schema
