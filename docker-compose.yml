@@ -1,0 +1,25 @@
+# Инфраструктура проекта. Пока поднимается только база: api и ui добавим, когда появятся
+# src/api/main.py и src/ui/app.py. Ollama запускается на хосте (так проще с видеокартой),
+# из контейнеров к нему обращаемся по host.docker.internal:11434.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: weak-signals-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-weak}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weak}
+      POSTGRES_DB: ${POSTGRES_DB:-weak_signals}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-weak} -d ${POSTGRES_DB:-weak_signals}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  db-data:
