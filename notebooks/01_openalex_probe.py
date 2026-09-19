@@ -4,7 +4,7 @@
 Вход: data/labeled_set.csv (собирается src.model.dataset.build_labeled_set).
 Кэш ответов: data/openalex_years_phrase.json — повторный запуск не ходит в сеть.
 
-Запуск: python notebooks/01_openalex_probe.py
+Запуск из корня репозитория: PYTHONPATH=. python notebooks/01_openalex_probe.py (ключ OPENALEX_API_KEY — из .env)
 """
 
 from __future__ import annotations
@@ -22,6 +22,8 @@ from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from src.common.config import get_settings
+
 DATA = Path("data")
 # Поиск точной фразы: без кавычек OpenAlex ищет слова по отдельности
 # («processing-in-pixel» → 139 тыс. работ вместо 1.5 тыс.).
@@ -33,6 +35,8 @@ LAST_FULL_YEAR = 2025  # 2026 ещё не закончился — рост сч
 def fetch_years(term: str, client: httpx.Client) -> dict[int, int]:
     """Число работ по годам, где термин встречается в заголовке или аннотации."""
     params = {"filter": f'title_and_abstract.search:"{term}"', "group_by": "publication_year", "per_page": 200}
+    if key := get_settings().openalex_api_key:
+        params["api_key"] = key
     r = client.get(API, params=params, timeout=20)
     r.raise_for_status()
     return {int(g["key"]): g["count"] for g in r.json()["group_by"] if g["key"].isdigit()}

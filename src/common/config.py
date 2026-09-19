@@ -21,6 +21,7 @@ class Settings(BaseSettings):
 
     # Источники
     contact_email: str = ""  # для вежливых запросов к API (User-Agent / mailto)
+    openalex_api_key: str = ""  # бесплатный аккаунт openalex.org: $1/день вместо $0.10 без ключа
     patentsview_api_key: str = ""
     lens_api_token: str = ""
 
