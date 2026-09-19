@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.collectors import arxiv, cache, hackernews
+from src.collectors import arxiv, cache, hackernews, news
 from src.collectors.http import RateLimiter
 from src.common.config import Settings
 
@@ -38,3 +38,11 @@ def _no_hn_rate_limit(monkeypatch: pytest.MonkeyPatch):
 def _isolated_cache(monkeypatch: pytest.MonkeyPatch, tmp_path):
     """Кэш пишется в data/cache/ — в тестах уводим его во временную папку, чтобы не мусорить и не течь между тестами."""
     monkeypatch.setattr(cache, "CACHE_DIR", tmp_path / "cache")
+
+
+@pytest.fixture(autouse=True)
+def _forget_exhausted_feeds():
+    """Лента, ответившая 429, выключается до конца процесса — между тестами это не должно течь."""
+    news.forget_exhausted_feeds()
+    yield
+    news.forget_exhausted_feeds()

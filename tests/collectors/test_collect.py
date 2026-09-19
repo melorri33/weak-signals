@@ -11,13 +11,26 @@ import importlib
 
 import pytest
 
-from src.collectors import arxiv, openalex
+from src.collectors import arxiv, news, openalex
 from src.common.config import Settings
 from src.common.schemas import Document, SourceType
 
 # collect.py и src/collectors/__init__.py оба называют своё имя `collect` — обычный `import src.collectors.collect`
 # ходит по атрибутам пакета и вместо модуля вернёт переэкспортированную функцию. import_module — в обход.
 collect_module = importlib.import_module("src.collectors.collect")
+
+
+@pytest.fixture(autouse=True)
+def _no_news(monkeypatch: pytest.MonkeyPatch):
+    """По умолчанию новостей нет — тесты оркестрации не должны ходить в ленты изданий.
+
+    Тест, где новости нужны, подменяет news.search своей заглушкой.
+    """
+
+    async def nothing(phrase, settings, client, errors):
+        return []
+
+    monkeypatch.setattr(news, "search", nothing)
 
 
 def _doc(doc_id: str, title: str | None = None) -> Document:
@@ -44,6 +57,27 @@ async def test_collect_combines_both_sources(monkeypatch: pytest.MonkeyPatch):
     docs = await collect_module.collect(["quantum sensing"])
 
     assert {d.id for d in docs} == {"openalex:1", "arxiv:1"}
+
+
+async def test_news_come_first_when_limit_cuts_the_list(monkeypatch: pytest.MonkeyPatch):
+    """71% источников датасета — техноновости: при обрезке по limit наука не должна их вытеснять."""
+
+    async def fake_news(phrase, settings, client, errors):
+        return [_doc(f"techcrunch.com:{i}") for i in range(5)]
+
+    async def fake_openalex(phrase, settings, client, limit=200):
+        return [_doc(f"openalex:{i}") for i in range(50)]
+
+    async def fake_arxiv(phrase, settings, client, limit=50):
+        return []
+
+    monkeypatch.setattr(news, "search", fake_news)
+    monkeypatch.setattr(openalex, "search", fake_openalex)
+    monkeypatch.setattr(arxiv, "search", fake_arxiv)
+
+    docs = await collect_module.collect(["quantum sensing"], limit=6)
+
+    assert sum(d.id.startswith("techcrunch.com:") for d in docs) == 3  # по одному из источника по кругу
 
 
 async def test_collect_empty_phrases_returns_empty():
