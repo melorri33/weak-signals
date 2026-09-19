@@ -1,0 +1,157 @@
+[
+  {
+    "id": "example:1",
+    "source": "openalex",
+    "source_type": "paper",
+    "title": "Zero-knowledge KYC verification for cross-border payments",
+    "abstract": "ПРИМЕР. Метод проверки клиента без раскрытия персональных данных на основе zero-knowledge доказательств.",
+    "url": "https://example.org/doc/1",
+    "published": "2025-11-01",
+    "language": "en",
+    "organizations": ["Example University"],
+    "found_by": "zero-knowledge kyc"
+  },
+  {
+    "id": "example:2",
+    "source": "arxiv",
+    "source_type": "preprint",
+    "title": "Zero-knowledge KYC at scale: benchmarks and limitations",
+    "abstract": "ПРИМЕР. Замеры производительности zero-knowledge KYC на миллионах проверок.",
+    "url": "https://example.org/doc/2",
+    "published": "2026-01-14",
+    "language": "en",
+    "found_by": "zero-knowledge kyc"
+  },
+  {
+    "id": "example:3",
+    "source": "patentsview",
+    "source_type": "patent",
+    "title": "Система подтверждения личности с нулевым разглашением данных",
+    "abstract": "ПРИМЕР. Патент на устройство и способ проверки личности без передачи персональных данных.",
+    "url": "https://example.org/doc/3",
+    "published": "2025-06-20",
+    "language": "ru",
+    "found_by": "проверка личности без разглашения"
+  },
+  {
+    "id": "example:4",
+    "source": "openalex",
+    "source_type": "paper",
+    "title": "Federated credit scoring across small banks",
+    "abstract": "ПРИМЕР. Совместное обучение скоринговой модели без обмена данными клиентов.",
+    "url": "https://example.org/doc/4",
+    "published": "2025-09-05",
+    "language": "en",
+    "found_by": "federated credit scoring"
+  },
+  {
+    "id": "example:5",
+    "source": "arxiv",
+    "source_type": "preprint",
+    "title": "Federated credit scoring with differential privacy guarantees",
+    "abstract": "ПРИМЕР. Федеративный скоринг с гарантиями дифференциальной приватности.",
+    "url": "https://example.org/doc/5",
+    "published": "2026-02-02",
+    "language": "en",
+    "found_by": "federated credit scoring"
+  },
+  {
+    "id": "example:6",
+    "source": "cyberleninka",
+    "source_type": "paper",
+    "title": "Федеративное обучение скоринговых моделей в банковской группе",
+    "abstract": "ПРИМЕР. Опыт применения федеративного обучения для кредитного скоринга.",
+    "url": "https://example.org/doc/6",
+    "published": "2025-12-11",
+    "language": "ru",
+    "found_by": "федеративное обучение скоринг"
+  },
+  {
+    "id": "example:7",
+    "source": "openalex",
+    "source_type": "paper",
+    "title": "Programmable stablecoin settlement for interbank clearing",
+    "abstract": "ПРИМЕР. Программируемые расчёты между банками на стейблкоинах.",
+    "url": "https://example.org/doc/7",
+    "published": "2026-03-19",
+    "language": "en",
+    "found_by": "programmable settlement"
+  },
+  {
+    "id": "example:8",
+    "source": "gdelt",
+    "source_type": "news",
+    "title": "Central bank pilots programmable settlement rails",
+    "abstract": "ПРИМЕР. Новость о пилоте программируемых расчётов.",
+    "url": "https://example.org/doc/8",
+    "published": "2026-04-02",
+    "language": "en",
+    "found_by": "programmable settlement"
+  },
+  {
+    "id": "example:9",
+    "source": "openalex",
+    "source_type": "paper",
+    "title": "Homomorphic encryption for fraud detection on encrypted transactions",
+    "abstract": "ПРИМЕР. Поиск мошеннических операций без расшифровки данных.",
+    "url": "https://example.org/doc/9",
+    "published": "2025-08-30",
+    "language": "en",
+    "found_by": "homomorphic fraud detection"
+  },
+  {
+    "id": "example:10",
+    "source": "arxiv",
+    "source_type": "preprint",
+    "title": "Homomorphic encryption for fraud detection: latency study",
+    "abstract": "ПРИМЕР. Исследование задержек при гомоморфном шифровании в антифроде.",
+    "url": "https://example.org/doc/10",
+    "published": "2026-01-27",
+    "language": "en",
+    "found_by": "homomorphic fraud detection"
+  },
+  {
+    "id": "example:11",
+    "source": "rss",
+    "source_type": "blog",
+    "title": "Почему гомоморфное шифрование пока не в продакшене",
+    "abstract": "ПРИМЕР. Блог-запись об ограничениях гомоморфного шифрования.",
+    "url": "https://example.org/doc/11",
+    "published": "2026-05-05",
+    "language": "ru",
+    "found_by": "гомоморфное шифрование антифрод"
+  },
+  {
+    "id": "example:12",
+    "source": "openalex",
+    "source_type": "paper",
+    "title": "Confidential computing enclaves for open banking APIs",
+    "abstract": "ПРИМЕР. Доверенные анклавы для обработки данных открытого банкинга.",
+    "url": "https://example.org/doc/12",
+    "published": "2025-10-17",
+    "language": "en",
+    "found_by": "confidential computing banking"
+  },
+  {
+    "id": "example:13",
+    "source": "patentsview",
+    "source_type": "patent",
+    "title": "Confidential computing enclave for payment data processing",
+    "abstract": "ПРИМЕР. Патент на обработку платёжных данных в доверенном анклаве.",
+    "url": "https://example.org/doc/13",
+    "published": "2025-07-08",
+    "language": "en",
+    "found_by": "confidential computing banking"
+  },
+  {
+    "id": "example:14",
+    "source": "gdelt",
+    "source_type": "news",
+    "title": "Регулятор обсуждает доверенные анклавы в открытом банкинге",
+    "abstract": "ПРИМЕР. Новость об обсуждении доверенных анклавов регулятором.",
+    "url": "https://example.org/doc/14",
+    "published": "2026-06-12",
+    "language": "ru",
+    "found_by": "доверенные анклавы банкинг"
+  }
+]
