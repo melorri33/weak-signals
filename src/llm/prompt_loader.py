@@ -21,6 +21,10 @@ def load_prompt(name: str) -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
-def render(name: str, **values: str) -> str:
-    """Подставить значения в промпт: в файле места подстановки помечены как {query}, {documents}."""
-    return load_prompt(name).format(**values)
+def render(prompt_name: str, **values: str) -> str:
+    """Подставить значения в промпт: в файле места подстановки помечены как {query}, {documents}.
+
+    Первый параметр назван prompt_name, а не name: у промпта карточки есть подстановка {name},
+    и одноимённый параметр функции конфликтовал бы с ней.
+    """
+    return load_prompt(prompt_name).format(**values)

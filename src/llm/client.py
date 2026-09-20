@@ -10,8 +10,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, TypeVar
 
 import httpx
@@ -123,7 +125,15 @@ class LLMClient:
         json_schema: dict[str, Any] | None,
         max_tokens: int = NUM_PREDICT,
     ) -> str:
-        """Один вызов /api/chat. Пишет запись в журнал моделей даже если вызов упал."""
+        """Один вызов /api/chat. Пишет запись в журнал моделей даже если вызов упал.
+
+        Одинаковый запрос к одной модели даёт одинаковый ответ (температура 0.2), поэтому ответ
+        кэшируется на диске: повторный прогон и демонстрация не ждут модель по новой.
+        """
+        cache_key = _cache_key(self.model, messages, json_schema, max_tokens)
+        if (cached := _cache_get(cache_key)) is not None:
+            log.info("step=%s ответ взят из кэша", step)
+            return cached
         body: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -143,6 +153,7 @@ class LLMClient:
         content = (data.get("message") or {}).get("content", "")
         if not content.strip():
             raise LLMError(f"шаг {step}: модель вернула пустой ответ")
+        _cache_put(cache_key, content)
         return content
 
     async def _post_chat(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -158,6 +169,36 @@ class LLMClient:
     def _http(self, timeout_s: float) -> httpx.AsyncClient:
         # trust_env=False: если на машине настроен системный прокси, локальный Ollama через него не ходит.
         return httpx.AsyncClient(base_url=self.base_url, timeout=timeout_s, trust_env=False)
+
+
+# Кэш ответов модели. Лежит в data/ (папка не коммитится). Ключ — модель + запрос целиком,
+# поэтому правка промпта автоматически делает старые ответы недействительными.
+CACHE_DIR = Path("data") / "llm_cache"
+
+
+def _cache_key(model: str, messages: list[dict[str, str]], json_schema: dict[str, Any] | None, max_tokens: int) -> str:
+    raw = json.dumps([model, messages, json_schema, max_tokens], ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _cache_get(key: str) -> str | None:
+    if not get_settings().llm_cache:
+        return None
+    path = CACHE_DIR / f"{key}.txt"
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def _cache_put(key: str, content: str) -> None:
+    if not get_settings().llm_cache:
+        return
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        (CACHE_DIR / f"{key}.txt").write_text(content, encoding="utf-8")
+    except OSError as exc:  # кэш — удобство, а не обязательное условие работы
+        log.warning("Не смог записать кэш ответа модели: %s", exc)
 
 
 def _messages(prompt: str, system: str | None) -> list[dict[str, str]]:

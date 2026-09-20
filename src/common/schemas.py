@@ -127,7 +127,9 @@ class FilterDecision(BaseModel):
     candidate_id: str
     name: str
     excluded: bool
-    reason_code: Literal["mature", "hype", "noise", "ok"]
+    # no_research — по точной фразе нет научных работ: так выглядят названия продуктов и моделей,
+    # которые выделяются из заголовков новостей.
+    reason_code: Literal["mature", "hype", "noise", "no_research", "ok"]
     reason_text: str = Field(
         description="по-русски, для интерфейса: «Зрелая технология: 45 000 публикаций, есть стандарт ISO»"
     )

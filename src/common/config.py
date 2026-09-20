@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     llm_provider: str = "ollama"
     llm_model: str = "qwen3:8b"
     ollama_url: str = "http://localhost:11434"
+    # Ответы модели кэшируются по тексту запроса: повторный прогон и демонстрация идут мгновенно,
+    # а на машине без видеокарты один вызов стоит десятки секунд. Выключается на время замеров скорости.
+    llm_cache: bool = True
 
     # Эмбеддинги
     embed_model: str = "BAAI/bge-m3"
