@@ -12,7 +12,10 @@ from datetime import date, timedelta
 import httpx
 
 from src.common.config import Settings
+from src.common.logs import get_logger
 from src.common.schemas import Document, SourceType
+
+log = get_logger(__name__)
 
 API = "https://api.openalex.org/works"
 # OpenAlex не отдаёт больше 200 групп на group_by — используем как верхнюю границу и для per_page.
@@ -80,6 +83,28 @@ def _to_document(work: dict, phrase: str) -> Document:
     )
 
 
+async def _get(params: dict[str, str], settings: Settings, client: httpx.AsyncClient) -> dict:
+    """Запрос к OpenAlex. Ключ исчерпан — повторяем без него, анонимный доступ живёт отдельно.
+
+    У ключа свой дневной лимит (около $1 против $0.10 у анонимного доступа). Когда он выбран,
+    OpenAlex отвечает 429 именно на запросы с ключом, а без ключа в это же время отдаёт данные.
+    Проверено 21.09: с ключом 429, без ключа HTTP 200 и 7116 работ по той же фразе.
+
+    Без отката конвейер терял научный источник целиком и молча шёл дальше: в одном из прогонов
+    того дня 1372 запроса из 1380 отбились, три четверти кандидатов остались без данных
+    о публикациях, а в логе прогона это выглядело как обычная работа.
+    """
+    r = await client.get(API, params=params, timeout=settings.source_timeout_s)
+    if r.status_code == 429 and "api_key" in params:
+        log.warning("OpenAlex: ключ исчерпал лимит, повторяю запрос без него")
+        retry = {k: v for k, v in params.items() if k != "api_key"}
+        if settings.contact_email:
+            retry["mailto"] = settings.contact_email
+        r = await client.get(API, params=retry, timeout=settings.source_timeout_s)
+    r.raise_for_status()
+    return r.json()
+
+
 async def search(phrase: str, settings: Settings, client: httpx.AsyncClient, limit: int = 200) -> list[Document]:
     """Документы, у которых фраза встречается в заголовке или аннотации, за последние годы."""
     from_date = date.today() - timedelta(days=365 * SEARCH_YEARS_BACK)
@@ -90,30 +115,26 @@ async def search(phrase: str, settings: Settings, client: httpx.AsyncClient, lim
         per_page=str(min(limit, MAX_PER_PAGE)),
         select="id,doi,title,display_name,abstract_inverted_index,publication_date,language,authorships,open_access",
     )
-    r = await client.get(API, params=params, timeout=settings.source_timeout_s)
-    r.raise_for_status()
-    return [_to_document(work, phrase) for work in r.json()["results"]]
+    data = await _get(params, settings, client)
+    return [_to_document(work, phrase) for work in data["results"]]
 
 
 async def year_counts(term: str, settings: Settings, client: httpx.AsyncClient) -> dict[int, int]:
     """Число работ по годам публикации (для TermStats.pubs_by_year)."""
     params = _params(term, settings, group_by="publication_year", per_page=str(MAX_PER_PAGE))
-    r = await client.get(API, params=params, timeout=settings.source_timeout_s)
-    r.raise_for_status()
-    return {int(g["key"]): g["count"] for g in r.json()["group_by"] if g["key"].isdigit()}
+    data = await _get(params, settings, client)
+    return {int(g["key"]): g["count"] for g in data["group_by"] if g["key"].isdigit()}
 
 
 async def type_counts(term: str, settings: Settings, client: httpx.AsyncClient) -> dict[str, int]:
     """Число работ по типу публикации (для TermStats.pubs_by_type — доля препринтов)."""
     params = _params(term, settings, group_by="type", per_page=str(MAX_PER_PAGE))
-    r = await client.get(API, params=params, timeout=settings.source_timeout_s)
-    r.raise_for_status()
-    return {g["key_display_name"]: g["count"] for g in r.json()["group_by"]}
+    data = await _get(params, settings, client)
+    return {g["key_display_name"]: g["count"] for g in data["group_by"]}
 
 
 async def org_count(term: str, settings: Settings, client: httpx.AsyncClient) -> int:
     """Число разных организаций-авторов (для TermStats.distinct_orgs). OpenAlex отдаёт не больше 200 групп."""
     params = _params(term, settings, group_by="authorships.institutions.lineage", per_page=str(MAX_PER_PAGE))
-    r = await client.get(API, params=params, timeout=settings.source_timeout_s)
-    r.raise_for_status()
-    return int(r.json()["meta"]["groups_count"])
+    data = await _get(params, settings, client)
+    return int(data["meta"]["groups_count"])

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 
 import httpx
 import pytest
 
 from src.collectors import openalex
+from src.common.config import Settings
 from tests.collectors.conftest import raw_fixture
 
 
@@ -125,3 +127,41 @@ async def test_search_matches_live_api():
 
     assert years
     assert sum(years.values()) > 1000
+
+
+async def test_exhausted_key_falls_back_to_anonymous(monkeypatch: pytest.MonkeyPatch):
+    """Ключ исчерпал дневной лимит — повторяем запрос без него, а не теряем источник.
+
+    У ключа свой лимит, у анонимного доступа свой: когда первый выбран, OpenAlex отвечает 429
+    именно на запросы с ключом. Без отката конвейер терял научный источник целиком и молча
+    шёл дальше — в прогоне 21.09 так отбилось 1372 запроса из 1380.
+    """
+    calls: list[dict] = []
+
+    class _Response:
+        def __init__(self, status_code: int, payload: dict):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self) -> dict:
+            return self._payload
+
+        def raise_for_status(self) -> None:
+            if self.status_code >= 400:
+                raise httpx.HTTPStatusError("ошибка", request=None, response=None)  # type: ignore[arg-type]
+
+    async def fake_get(url, params=None, timeout=None):
+        calls.append(dict(params or {}))
+        if "api_key" in (params or {}):
+            return _Response(429, {})
+        return _Response(200, {"results": [], "group_by": [], "meta": {"groups_count": 7}})
+
+    client = SimpleNamespace(get=fake_get)
+    settings = Settings(openalex_api_key="исчерпанный", contact_email="team@example.org")
+
+    assert await openalex.org_count("нечто", settings, client) == 7  # type: ignore[arg-type]
+
+    assert len(calls) == 2, "должно быть две попытки: с ключом и без"
+    assert "api_key" in calls[0]
+    assert "api_key" not in calls[1], "во второй попытке ключа быть не должно"
+    assert calls[1]["mailto"] == "team@example.org", "без ключа представляемся почтой"
