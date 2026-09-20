@@ -45,12 +45,15 @@ T = TypeVar("T")
 # и от его качества зависит, найдём ли мы технологию вообще, — поэтому бюджет щедрый.
 # Скоринг синхронный и занимает миллисекунды, отдельный бюджет ему не нужен.
 EXPAND_BUDGET_S = 120.0
-# Кандидатов выделяет LLM пачками документов: на процессоре это единицы минут.
-# Не успели — берём то, что уже выписано, и идём дальше.
-CANDIDATES_BUDGET_S = 900.0
+# Кандидатов выделяет LLM пачками документов. На видеокарте (RTX 3060, qwen3:14b, 32 токена/с)
+# пачка идёт секунды, а не минуты. Не успели — берём то, что уже выписано, и идём дальше.
+CANDIDATES_BUDGET_S = 180.0
 STATS_BUDGET_S = 60.0
-# Пятнадцать карточек, каждая — отдельный вызов модели.
-CARDS_BUDGET_S = 600.0
+# Пятнадцать карточек, каждая — отдельный вызов модели. Замер на RTX 3060 с qwen3:14b:
+# 15 вызовов за 150 с, то есть около 10 с на карточку. Пятнадцать карточек — это пять пачек
+# по CARDS_CONCURRENCY, примерно 190 с; остальное — запас на кандидатов, у которых карточка
+# не собралась и нужен добор следующего. На 150 с шаг упирался в потолок и отдавал 12 из 15.
+CARDS_BUDGET_S = 300.0
 
 # Уверенность запасного ранжирования, когда модель не отработала: ни за, ни против.
 NEUTRAL_SCORE = 0.5
@@ -254,6 +257,10 @@ async def _cards(
 
     Кандидат без источников в выдачу не идёт — это требование ТЗ, поэтому добор, а не заполнение
     пустышкой. Если кандидаты кончились раньше, честно возвращаем меньше и пишем в лог.
+
+    Бюджет держим сами, пачка за пачкой, а не общим asyncio.timeout вокруг цикла: отмена приходила
+    посреди пачки и уносила уже готовые карточки вместе с недоделанными — на прогоне 20.09 модель
+    отработала 12 раз, а в выдачу попало 9. Теперь готовые карточки пачки забираем всегда.
     """
     by_id = {c.id: c for c in candidates}
     docs_by_id = {d.id: d for d in docs}
@@ -272,15 +279,20 @@ async def _cards(
         return None
 
     started = time.perf_counter()
-    try:
-        async with asyncio.timeout(CARDS_BUDGET_S):
-            while queue and len(cards) < TOP_N:
-                batch_size = min(CARDS_CONCURRENCY, TOP_N - len(cards), len(queue))
-                batch = [queue.popleft() for _ in range(batch_size)]
-                done = await asyncio.gather(*(card_for(item) for item in batch))
-                cards.extend(card for card in done if card is not None)
-    except TimeoutError:
-        log.error("Шаг make_card не успел за %.0f с — отдаю %d карточек", CARDS_BUDGET_S, len(cards))
+    deadline = started + CARDS_BUDGET_S
+    while queue and len(cards) < TOP_N:
+        batch_size = min(CARDS_CONCURRENCY, TOP_N - len(cards), len(queue))
+        batch = [queue.popleft() for _ in range(batch_size)]
+        tasks = [asyncio.create_task(card_for(item)) for item in batch]
+        _, pending = await asyncio.wait(tasks, timeout=max(0.0, deadline - time.perf_counter()))
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        # Идём по batch, а не по множеству done: порядок карточек — это порядок уверенности модели.
+        cards.extend(t.result() for t in tasks if t not in pending and t.result() is not None)
+        if pending:
+            log.error("Шаг make_card не успел за %.0f с — отдаю %d карточек", CARDS_BUDGET_S, len(cards))
+            break
     log.info("Шаг make_card: %.1f с из %.0f с бюджета", time.perf_counter() - started, CARDS_BUDGET_S)
     if len(cards) < TOP_N:
         log.warning(

@@ -4,7 +4,18 @@ import asyncio
 
 import pytest
 
-from src.common.schemas import TOP_N, Candidate, Document, ScoredCandidate, SearchResult, SourceType, TermStats
+from src.common.schemas import (
+    TOP_N,
+    Candidate,
+    Document,
+    ScoredCandidate,
+    SearchResult,
+    SignalCard,
+    SourceRef,
+    SourceType,
+    TermStats,
+    TrustLevel,
+)
 from src.llm.client import LLMError
 from src.pipeline import deps
 from src.pipeline.run import NEUTRAL_SCORE, STAGE_DONE, _cards, _features, _log_near_misses, run
@@ -175,3 +186,55 @@ async def test_scored_field_is_filled():
     scores = [s.score for s in result.scored]
     assert scores == sorted(scores, reverse=True)
     assert {c.candidate_id for c in result.top} <= {s.candidate_id for s in result.scored}
+
+
+async def test_cards_keep_finished_work_when_budget_runs_out(monkeypatch: pytest.MonkeyPatch):
+    """Бюджет кончился посреди пачки — готовые карточки этой пачки остаются в выдаче.
+
+    Прогон 20.09 отработал make_card двенадцать раз, а в выдачу попало девять: общий таймаут
+    вокруг цикла отменял пачку целиком вместе с уже посчитанными карточками.
+    """
+    candidates = [Candidate(id=f"c{i}", name=f"Технология {i}", document_ids=[f"d{i}"]) for i in range(9)]
+    docs = [
+        Document(
+            id=f"d{i}",
+            source="openalex",
+            source_type=SourceType.PAPER,
+            title=f"Работа {i}",
+            url=f"https://example.org/d{i}",
+        )
+        for i in range(9)
+    ]
+    scored = [ScoredCandidate(candidate_id=c.id, name=c.name, score=1 - i / 100) for i, c in enumerate(candidates)]
+
+    # Каждая третья карточка «зависает»: пачка не успевает целиком, две готовые в ней — успевают.
+    async def slow_for_every_third(item, own_docs, name_ru=None):
+        if int(item.candidate_id.removeprefix("c")) % 3 == 2:
+            await asyncio.sleep(10)
+        return SignalCard(
+            candidate_id=item.candidate_id,
+            name=item.name,
+            score=item.score,
+            description="описание",
+            advantage="преимущество",
+            case_example="пример",
+            why_weak_signal="ранняя стадия",
+            sources=[
+                SourceRef(
+                    document_id=own_docs[0].id,
+                    title=own_docs[0].title,
+                    url=own_docs[0].url,
+                    source_type=own_docs[0].source_type,
+                    language="en",
+                    trust=TrustLevel.MEDIUM,
+                )
+            ],
+        )
+
+    monkeypatch.setattr("src.pipeline.run.make_card", slow_for_every_third)
+    monkeypatch.setattr("src.pipeline.run.CARDS_BUDGET_S", 0.3)
+
+    cards = await _cards(scored, candidates, docs)
+
+    # Первая пачка — c0, c1, c2: c2 завис, но c0 и c1 посчитаны и должны остаться.
+    assert [c.candidate_id for c in cards] == ["c0", "c1"]
