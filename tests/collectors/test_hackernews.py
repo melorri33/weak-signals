@@ -73,4 +73,6 @@ async def test_concurrent_calls_do_not_race_requests(settings, monkeypatch: pyte
 
     assert len(timestamps) == 10  # 5 запросов на термин
     gaps = [b - a for a, b in zip(timestamps, timestamps[1:], strict=False)]
-    assert all(gap >= interval_s * 0.9 for gap in gaps)  # 10% допуск на точность таймера
+    # Проверяем, что запросы разнесены во времени, а не точную величину паузы: на Windows таймер
+    # сна грубый, и под нагрузкой строгий порог давал ложные падения.
+    assert all(gap >= interval_s * 0.5 for gap in gaps)

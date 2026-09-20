@@ -5,6 +5,7 @@ import asyncio
 import pytest
 
 from src.common.schemas import TOP_N, Candidate, Document, ScoredCandidate, SearchResult, SourceType, TermStats
+from src.llm.client import LLMError
 from src.pipeline import deps
 from src.pipeline.run import NEUTRAL_SCORE, STAGE_DONE, _cards, _features, _log_near_misses, run
 
@@ -22,9 +23,15 @@ def _no_llm(monkeypatch: pytest.MonkeyPatch):
     async def no_stats(term: str) -> None:
         return None
 
+    def no_client() -> None:
+        raise LLMError("офлайн-тест: модели нет")
+
     monkeypatch.setattr("src.pipeline.run.expand_query", phrases)
     monkeypatch.setattr("src.pipeline.deps.collect", docs)
     monkeypatch.setattr("src.pipeline.deps.term_stats", no_stats)
+    # Кандидатов и карточки делает LLM. В офлайн-тестах модели нет — и это проверка сама по себе:
+    # конвейер обязан дойти до конца на запасных вариантах (названия из заголовков, карточка без описания).
+    monkeypatch.setattr("src.llm.client.LLMClient.from_settings", staticmethod(no_client))
     # Хранилище тоже не трогаем: без запущенного Postgres каждое сохранение ждёт таймаут подключения.
     monkeypatch.setattr("src.pipeline.deps.save_documents", lambda docs: None)
     monkeypatch.setattr("src.pipeline.deps.save_search_result", lambda result: None)

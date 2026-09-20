@@ -157,3 +157,29 @@ async def test_collect_quantum_sensing_returns_50_plus_real_documents():
     docs = await collect_module.collect(["quantum sensing"], limit=200)
 
     assert len(docs) >= 50
+
+
+async def test_slow_source_does_not_take_the_others_with_it(monkeypatch: pytest.MonkeyPatch):
+    """arXiv просит паузу 3 с между запросами: на живом прогоне он один съедал весь бюджет,
+    и вместе с ним отменялись уже собранные новости — получался ноль документов при живых лентах."""
+
+    async def fake_news(phrase, settings, client, errors):
+        return [_doc(f"techcrunch.com:{phrase}")]
+
+    async def slow_arxiv(phrase, settings, client, limit=50):
+        await asyncio.sleep(10)
+        return [_doc("arxiv:поздно")]
+
+    async def fake_openalex(phrase, settings, client, limit=200):
+        return [_doc(f"openalex:{phrase}")]
+
+    monkeypatch.setattr(news, "search", fake_news)
+    monkeypatch.setattr(arxiv, "search", slow_arxiv)
+    monkeypatch.setattr(openalex, "search", fake_openalex)
+    monkeypatch.setattr(collect_module, "get_settings", lambda: Settings(collect_budget_s=0.3))
+
+    docs = await collect_module.collect(["первая фраза", "вторая фраза"])
+
+    ids = {d.id for d in docs}
+    assert len(ids) == 4  # новости и OpenAlex по обеим фразам
+    assert not any(d.id.startswith("arxiv:") for d in docs)
