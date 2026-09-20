@@ -13,6 +13,9 @@ pgvector>=0.2
 # ML
 pandas>=2.1
 numpy>=1.26
+# Чтение xlsx датасета в src/model/dataset.py: без него не работают
+# ни обучение модели, ни проверка python -m src.model.eval_search.
+openpyxl>=3.1
 scikit-learn>=1.4
 catboost>=1.2
 shap>=0.45
