@@ -173,3 +173,27 @@ async def test_all_answers_unusable_falls_back_to_titles():
     candidates = await extract_candidates(docs, client=client)
 
     assert [c.name for c in candidates] == ["Sodium-ion batteries grid"]
+
+
+async def test_stops_itself_before_the_budget_ends(monkeypatch: pytest.MonkeyPatch):
+    """Отмена снаружи приходит посреди вызова модели и уносит всех выписанных кандидатов,
+    поэтому шаг останавливается сам и отдаёт то, что успел."""
+    import asyncio
+
+    from src.pipeline import candidates as module
+
+    monkeypatch.setattr(module, "BUDGET_S", 0.3)
+    monkeypatch.setattr(module, "DOCS_IN_BATCH", 1)
+    docs = [_doc(str(i), f"Работа {i}") for i in range(5)]
+
+    class _SlowClient(_FakeClient):
+        async def ask_json(self, step, prompt, schema, max_tokens=0):
+            await asyncio.sleep(0.2)
+            return await super().ask_json(step, prompt, schema, max_tokens)
+
+    client = _SlowClient([{"candidates": [{"name": f"технология {i}", "document_ids": ["d1"]}]} for i in range(5)])
+
+    result = await extract_candidates(docs, client=client)
+
+    assert result, "то, что успели выписать, должно вернуться"
+    assert len(client.prompts) < 5, "последние пачки не берём — они не успеют закончиться"

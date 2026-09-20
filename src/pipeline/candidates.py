@@ -38,11 +38,13 @@ MAX_WORDS_IN_TERM = 5
 # начнёт пересказывать документы вместо выписывания терминов.
 DOCS_IN_BATCH = 8
 # Сколько документов вообще отдаём модели: на процессоре каждый вызов стоит десятки секунд.
-MAX_DOCS_FOR_LLM = 48
+MAX_DOCS_FOR_LLM = 32
 # Сколько знаков аннотации кладём в промпт: дальше идёт вода, а токены на ноутбуке дорогие.
 ABSTRACT_CHARS = 300
-# Общий бюджет шага: что не успели — добираем запасным вариантом, а не теряем.
-BUDGET_S = 420.0
+# Собственный бюджет шага. Держим его заметно ниже бюджета конвейера (CANDIDATES_BUDGET_S):
+# отмена снаружи приходит посреди вызова модели и уносит всех уже выписанных кандидатов,
+# поэтому останавливаемся сами и возвращаем то, что успели.
+BUDGET_S = 300.0
 
 # Служебные слова: с них название технологии не начинается и смысла не несут.
 _STOPWORDS = {
@@ -143,17 +145,29 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
     batches = [chosen[i : i + DOCS_IN_BATCH] for i in range(0, len(chosen), DOCS_IN_BATCH)]
     merged: dict[str, Candidate] = {}
     started = time.perf_counter()
+    slowest_batch_s = 0.0
     for number, batch in enumerate(batches, start=1):
-        if time.perf_counter() - started > BUDGET_S:
-            log.warning("extract_candidates: бюджет %.0f с исчерпан на пачке %d из %d", BUDGET_S, number, len(batches))
+        elapsed = time.perf_counter() - started
+        # Начинаем пачку, только если она успеет закончиться: прерванный вызов модели ничего не даёт,
+        # а время съедает. Ориентируемся на самую долгую из уже сделанных.
+        if elapsed + slowest_batch_s > BUDGET_S:
+            log.warning(
+                "extract_candidates: бюджет %.0f с, прошло %.0f с — пачки с %d по %d не беру",
+                BUDGET_S,
+                elapsed,
+                number,
+                len(batches),
+            )
             break
+        batch_started = time.perf_counter()
         labels = {f"d{i}": doc for i, doc in enumerate(batch, start=1)}
         prompt = render("extract_candidates", documents=_documents_block(labels))
         try:
-            answer = await client.ask_json(step="extract_candidates", prompt=prompt, schema=_Answer, max_tokens=700)
+            answer = await client.ask_json(step="extract_candidates", prompt=prompt, schema=_Answer, max_tokens=500)
         except LLMError as exc:
             log.warning("extract_candidates: пачка %d из %d не удалась (%s) — иду дальше", number, len(batches), exc)
             continue
+        slowest_batch_s = max(slowest_batch_s, time.perf_counter() - batch_started)
         _merge(merged, answer.candidates, labels)
     if not merged:
         raise LLMError("ни одна пачка документов не дала кандидатов")
