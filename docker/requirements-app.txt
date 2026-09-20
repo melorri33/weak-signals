@@ -1,0 +1,26 @@
+# Зависимости образа приложения — подмножество requirements.txt (версии совпадают, это проверяет
+# tests/test_requirements.py). Обучение модели и отчёты (scikit-learn, shap, sentence-transformers,
+# matplotlib, openpyxl) в образ не тянем: они нужны только на машине разработчика, а торч и его
+# соседи добавляют к образу несколько гигабайт. Обученная модель лежит в src/model/artifacts.
+
+# Ядро
+pydantic>=2.6
+pydantic-settings>=2.2
+httpx>=0.27
+python-dotenv>=1.0
+pyyaml>=6.0
+
+# База
+sqlalchemy>=2.0
+psycopg[binary]>=3.1
+pgvector>=0.2
+
+# Скоринг и признаки
+pandas>=2.1
+numpy>=1.26
+catboost>=1.2
+
+# API и интерфейс
+fastapi>=0.110
+uvicorn[standard]>=0.29
+streamlit>=1.33

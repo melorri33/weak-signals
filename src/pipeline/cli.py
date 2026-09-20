@@ -21,6 +21,7 @@ _JSON_TO_STDOUT = "-"
 
 
 def main(argv: list[str] | None = None) -> int:
+    _force_utf8_output()
     args = _parse_args(argv)
     to_stdout = args.json is _JSON_TO_STDOUT
     progress = _show_progress if args.progress and not to_stdout else None
@@ -35,6 +36,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nРезультат целиком: {args.json}")
     _print_result(result)
     return 0 if result.status == "done" else 1
+
+
+def _force_utf8_output() -> None:
+    """Печатать отчёт в utf-8 независимо от локали.
+
+    Весь вывод по-русски, а при перенаправлении в файл Python берёт кодировку не из терминала,
+    а из локали: на машине с локалью POSIX/C печать отчёта падала с UnicodeEncodeError уже
+    после прогона — результат посчитан и сохранён, а отчёт терялся. errors='replace' на случай
+    экзотического символа: лучше один вопросительный знак, чем потерянный отчёт.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
