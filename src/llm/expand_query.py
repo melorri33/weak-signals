@@ -21,6 +21,14 @@ MIN_PHRASES = 8
 MAX_PHRASES = 18
 MAX_WORDS_IN_PHRASE = 6
 
+# Сколько фраз латиницей нужно обязательно. Русская фраза бесполезна для половины конвейера:
+# англоязычные ленты новостей её вообще не принимают (src/collectors/news.py пропускает кириллицу,
+# иначе тратится лимит запросов впустую), а в arXiv и OpenAlex по ней почти ничего не находится.
+# Прогон, где все фразы оказались русскими, собрал ноль документов и остановился с ошибкой.
+MIN_LATIN_PHRASES = 6
+
+_CYRILLIC_RE = re.compile(r"[а-яё]", re.IGNORECASE)
+
 # Слова, из-за которых поиск сползает в рекламу и обзоры вместо исследований.
 _BANNED_WORDS = {"тренд", "тренды", "перспективный", "перспективные", "будущее", "прорыв", "trend", "trends", "future"}
 
@@ -112,10 +120,47 @@ async def expand_query(query: str, client: LLMClient | None = None) -> list[str]
     except LLMError as exc:
         log.warning("expand_query: LLM не помогла (%s) — беру фразы из запроса", exc)
         phrases = []
+    if _count_latin(phrases) < MIN_LATIN_PHRASES:
+        phrases = _clean([*phrases, *await _ask_for_english(query, phrases, client)])
     if len(phrases) < MIN_PHRASES:
         log.warning("expand_query: годных фраз %d, добираю простыми вариантами запроса", len(phrases))
         phrases = _clean([*phrases, *_fallback_phrases(query)])
     return phrases[:MAX_PHRASES]
+
+
+def _is_latin(phrase: str) -> bool:
+    """Фраза годится для англоязычных источников, если в ней нет кириллицы."""
+    return _CYRILLIC_RE.search(phrase) is None
+
+
+def _count_latin(phrases: list[str]) -> int:
+    return sum(_is_latin(p) for p in phrases)
+
+
+async def _ask_for_english(query: str, phrases: list[str], client: LLMClient | None) -> list[str]:
+    """Добрать английские фразы отдельным вызовом.
+
+    Промпт требует половину фраз на английском, но модель выполняет это через раз: на запросе про
+    edge AI qwen3:14b в трёх прогонах из четырёх вернула только русские. Одного общего промпта мало,
+    поэтому недостающие английские фразы просим отдельно — так проверяемо и видно в логе.
+    Модель не ответила — берём грубую английскую подстраховку, лишь бы источники получили запрос.
+    """
+    need = MIN_LATIN_PHRASES - _count_latin(phrases)
+    log.warning("expand_query: английских фраз %d из %d — добираю %d", _count_latin(phrases), MIN_LATIN_PHRASES, need)
+    try:
+        client = client or LLMClient.from_settings()
+        answer = await client.ask_json(
+            step="expand_query_en",
+            prompt=render("expand_query_en", query=query, count=need + 2),
+            schema=_Phrases,
+        )
+        english = [p for p in _clean(answer.phrases) if _is_latin(p)]
+    except LLMError as exc:
+        log.warning("expand_query: добор английских фраз не удался (%s)", exc)
+        english = []
+    if len(english) < need:
+        english = [*english, *(p for p in _fallback_phrases(query) if _is_latin(p))]
+    return english
 
 
 def _clean(phrases: list[str]) -> list[str]:
