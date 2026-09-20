@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     lens_api_token: str = ""
 
     # Бюджеты конвейера
-    max_documents: int = 500
+    max_documents: int = 2000
     source_timeout_s: float = 15.0
     collect_budget_s: float = 60.0
     cache_ttl_days: int = 7
