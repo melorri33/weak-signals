@@ -10,12 +10,14 @@
 
 Запуск: python -m src.model.eval_search result.json [--domain Финтех]
         python -m src.model.eval_search --run-all   # все 6 областей → data/search_eval.md
+        python -m src.model.eval_search --ceiling   # потолок: технологии датасета в собранных документах
 """
 
 from __future__ import annotations
 
 import argparse
 import glob
+import json
 import re
 from collections import Counter
 from dataclasses import dataclass, field
@@ -23,12 +25,15 @@ from pathlib import Path
 
 import yaml
 
+from src.common.logs import get_logger
 from src.common.schemas import Candidate, Document, SearchResult
 from src.model.dataset import load_signals
 
 DATA = Path("data")
 TERMS_PATH = DATA / "positive_terms.csv"
 QUERIES_PATH = Path(__file__).resolve().parents[2] / "tests" / "queries.yaml"
+
+log = get_logger(__name__)
 
 # Тестовые запросы (tests/queries.yaml); у запросов по областям датасета есть domain.
 TEST_QUERIES: list[dict] = yaml.safe_load(QUERIES_PATH.read_text(encoding="utf-8"))["queries"]
@@ -239,12 +244,76 @@ async def run_all(out_dir: Path) -> str:
     return "\n".join(["# Проверка поиска «как у жюри»", "", summary_md(reference, per_domain), *sections])
 
 
+async def ceiling(out_dir: Path) -> str:
+    """Потолок выдачи: сколько технологий датасета вообще попадает в собранные документы.
+
+    Это главное число проекта (docs/HANDOFF.md): чего нет в документах, того не будет ни
+    в кандидатах, ни в топ-15, сколько модель ни улучшай. Считается только первыми двумя
+    шагами конвейера — расширение запроса и сбор, — поэтому шесть областей проходят
+    за минуты, а не за полчаса.
+
+    Полный --run-all этого числа не даёт: SearchResult документов не содержит, и шаг
+    «документы после сбора» в нём всегда пропускается.
+    """
+    from src.common.config import get_settings
+    from src.llm.expand_query import expand_query
+    from src.pipeline import deps
+
+    settings = get_settings()
+    reference = load_reference()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    rows: list[tuple[str, int, int, int, int]] = []
+    for domain, query in DOMAIN_QUERIES.items():
+        phrases = await expand_query(query) or [query]
+        docs = await deps.collect(phrases, limit=settings.max_documents)
+        stages = evaluate(reference, domain, documents=docs)
+        found = stages[0].found if stages else {}
+        total = sum(1 for i in reference if i.domain == domain)
+        rows.append((domain, len(phrases), len(docs), len(found), total))
+        log.info("Потолок %s: документов %d, технологий области %d из %d", domain, len(docs), len(found), total)
+        (out_dir / f"{domain}_docs.json").write_text(_dumps_titles(docs), encoding="utf-8")
+    return _ceiling_md(rows)
+
+
+def _dumps_titles(docs: list[Document]) -> str:
+    """Заголовки собранных документов — чтобы потолок можно было перепроверить глазами."""
+    rows = [{"title": d.title, "url": d.url, "source": d.source, "type": d.source_type.value} for d in docs]
+    return json.dumps(rows, ensure_ascii=False, indent=2)
+
+
+def _ceiling_md(rows: list[tuple[str, int, int, int, int]]) -> str:
+    lines = [
+        "# Потолок выдачи: технологии датасета в собранных документах",
+        "",
+        "Чего нет здесь — не появится ни в кандидатах, ни в топ-15.",
+        "",
+        "| Область | Фраз | Документов | Технологий найдено | Всего в области |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    lines += [f"| {d} | {p} | {n} | {f} | {t} |" for d, p, n, f, t in rows]
+    docs_total = sum(r[2] for r in rows)
+    found_total = sum(r[3] for r in rows)
+    all_total = sum(r[4] for r in rows)
+    lines.append(f"| **Всего** | | **{docs_total}** | **{found_total}** | **{all_total}** |")
+    return "\n".join(lines) + "\n"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Сколько технологий датасета попало в топ-15")
     ap.add_argument("result", type=Path, nargs="?", help="SearchResult в JSON")
     ap.add_argument("--domain", choices=list(DOMAIN_QUERIES), help="область датасета (иначе — по тексту запроса)")
     ap.add_argument("--run-all", action="store_true", help="прогнать конвейер по всем 6 областям и собрать отчёт")
+    ap.add_argument("--ceiling", action="store_true", help="только сбор: технологии датасета в документах")
     args = ap.parse_args()
+    if args.ceiling:
+        import asyncio
+
+        report = asyncio.run(ceiling(DATA / "ceiling"))
+        path = DATA / "search_ceiling.md"
+        path.write_text(report, encoding="utf-8")
+        print(report)
+        print(f"Отчёт: {path}; заголовки документов: {DATA / 'ceiling'}")
+        return
     if args.run_all:
         import asyncio
 
