@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
@@ -51,21 +52,22 @@ async def term_stats(term: str) -> TermStats:
     errors: list[str] = []
 
     async with httpx.AsyncClient(headers={"User-Agent": user_agent("term stats", settings)}) as client:
-        pubs_by_year = await _cached(
-            "openalex_years", term, errors, lambda: openalex.year_counts(term, settings, client), _int_keys
-        )
-        pubs_by_type = await _cached(
-            "openalex_types", term, errors, lambda: openalex.type_counts(term, settings, client)
-        )
-        distinct_orgs = await _cached("openalex_orgs", term, errors, lambda: openalex.org_count(term, settings, client))
-        news_by_year = await _cached(
-            "hn_news", term, errors, lambda: hackernews.news_by_year(term, settings, client), _int_keys
-        )
-        wikipedia_en = await _cached(
-            "wikipedia_en", term, errors, lambda: wikipedia.has_article(term, "en", settings, client)
-        )
-        wikipedia_ru = await _cached(
-            "wikipedia_ru", term, errors, lambda: wikipedia.has_article(term, "ru", settings, client)
+        # Источники независимы — запрашиваем параллельно. Внутри news_by_year запросы к HN
+        # по-прежнему идут по одному (общий на процесс RateLimiter в hackernews.py).
+        (
+            pubs_by_year,
+            pubs_by_type,
+            distinct_orgs,
+            news_by_year,
+            wikipedia_en,
+            wikipedia_ru,
+        ) = await asyncio.gather(
+            _cached("openalex_years", term, errors, lambda: openalex.year_counts(term, settings, client), _int_keys),
+            _cached("openalex_types", term, errors, lambda: openalex.type_counts(term, settings, client)),
+            _cached("openalex_orgs", term, errors, lambda: openalex.org_count(term, settings, client)),
+            _cached("hn_news", term, errors, lambda: hackernews.news_by_year(term, settings, client), _int_keys),
+            _cached("wikipedia_en", term, errors, lambda: wikipedia.has_article(term, "en", settings, client)),
+            _cached("wikipedia_ru", term, errors, lambda: wikipedia.has_article(term, "ru", settings, client)),
         )
 
     return TermStats(

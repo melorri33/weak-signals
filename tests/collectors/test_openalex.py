@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import httpx
 import pytest
 
@@ -90,7 +92,27 @@ async def test_search_uses_exact_phrase_filter(settings):
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         await openalex.search("quantum sensing", settings, client)
 
-    assert seen["filter"] == 'title_and_abstract.search:"quantum sensing"'
+    assert seen["filter"].startswith('title_and_abstract.search:"quantum sensing",from_publication_date:')
+
+
+async def test_search_limits_to_recent_publications(settings):
+    """Старые обзоры устоявшихся тем не должны вытеснять свежие документы в выдаче collect()."""
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["filter"] = request.url.params["filter"]
+        return httpx.Response(200, json={"results": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        await openalex.search("quantum sensing", settings, client)
+
+    from_date_str = seen["filter"].split("from_publication_date:")[1]
+    from_date = date.fromisoformat(from_date_str)
+    age_years = (date.today() - from_date).days / 365
+    assert 2.9 <= age_years <= 3.1
+
+    # year_counts/type_counts/org_count считают историю термина целиком — фильтр там не нужен.
+    assert "from_publication_date" not in openalex._params("quantum sensing", settings)["filter"]
 
 
 @pytest.mark.network
