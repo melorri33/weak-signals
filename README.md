@@ -185,6 +185,7 @@ docker compose exec api python -m src.pipeline.cli "перспективные �
 ```bash
 pytest -m "not network"        # офлайн-тесты на фикстурах
 pytest -m network              # тесты, которым нужны Ollama и интернет
+pytest -m network -k cloud     # живой вызов облака; пропускается, пока в .env нет ключей
 ruff format . && ruff check .  # перед коммитом
 ```
 
