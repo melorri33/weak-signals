@@ -37,6 +37,15 @@ def _noise(f: CandidateFeatures, cfg: dict[str, Any]) -> str | None:
     return None
 
 
+def _no_research(f: CandidateFeatures, cfg: dict[str, Any]) -> str | None:
+    if f.total_pubs is not None and f.total_pubs < cfg["total_pubs_min"]:
+        return (
+            f"Нет следа в исследованиях: {_num(f.total_pubs)} научных работ по точной фразе "
+            f"(порог {_num(cfg['total_pubs_min'])}) — обычно так выглядит название продукта, а не технологии"
+        )
+    return None
+
+
 def _mature(f: CandidateFeatures, cfg: dict[str, Any]) -> str | None:
     reasons = []
     if f.total_pubs is not None and f.total_pubs > cfg["total_pubs_min"]:
@@ -59,8 +68,8 @@ def _hype(f: CandidateFeatures, cfg: dict[str, Any]) -> str | None:
     return None
 
 
-# Порядок важен: шум — жёсткое требование ТЗ, затем зрелое, затем хайп.
-_CHECKS = (("noise", _noise), ("mature", _mature), ("hype", _hype))
+# Порядок важен: шум — жёсткое требование ТЗ, затем отсутствие следа в науке, зрелое и хайп.
+_CHECKS = (("noise", _noise), ("no_research", _no_research), ("mature", _mature), ("hype", _hype))
 
 
 def apply(candidate: Candidate, features: CandidateFeatures) -> FilterDecision:

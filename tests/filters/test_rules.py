@@ -71,3 +71,26 @@ def test_rules_never_exclude_organizers_signals():
         ).excluded
     ]
     assert excluded == []
+
+
+def test_product_names_without_research_are_excluded():
+    """Из новостей в кандидаты попадают названия продуктов («Gemini 3.8 Flash»): по точной фразе
+    у них нет научных работ, и в выдачу они попадать не должны."""
+    decision = apply(
+        Candidate(id="p", name="какой-то продукт"),
+        CandidateFeatures(candidate_id="p", total_pubs=0, extra={"docs_rated": 1.0, "docs_trusted": 1.0}),
+    )
+
+    assert decision.excluded
+    assert decision.reason_code == "no_research"
+    assert "продукта" in decision.reason_text
+
+
+def test_missing_publication_count_does_not_exclude():
+    """Источник не ответил — это не повод исключать: пустой признак не считается плохим."""
+    decision = apply(
+        Candidate(id="p", name="термин"),
+        CandidateFeatures(candidate_id="p", total_pubs=None, extra={"docs_rated": 1.0, "docs_trusted": 1.0}),
+    )
+
+    assert not decision.excluded

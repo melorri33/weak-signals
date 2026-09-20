@@ -38,13 +38,13 @@ MAX_WORDS_IN_TERM = 5
 # начнёт пересказывать документы вместо выписывания терминов.
 DOCS_IN_BATCH = 8
 # Сколько документов вообще отдаём модели: на процессоре каждый вызов стоит десятки секунд.
-MAX_DOCS_FOR_LLM = 32
+MAX_DOCS_FOR_LLM = 80
 # Сколько знаков аннотации кладём в промпт: дальше идёт вода, а токены на ноутбуке дорогие.
 ABSTRACT_CHARS = 300
 # Собственный бюджет шага. Держим его заметно ниже бюджета конвейера (CANDIDATES_BUDGET_S):
 # отмена снаружи приходит посреди вызова модели и уносит всех уже выписанных кандидатов,
 # поэтому останавливаемся сами и возвращаем то, что успели.
-BUDGET_S = 300.0
+BUDGET_S = 720.0
 
 # Служебные слова: с них название технологии не начинается и смысла не несут.
 _STOPWORDS = {
@@ -82,6 +82,8 @@ _STOPWORDS = {
     "не",
 }
 _SPLIT_TITLE = re.compile(r"[:;,.—–()\[\]]")
+# Номер версии или модели («Foo 3.8», «Bar 2») — признак продукта, а не технологии.
+_VERSION_NUMBER = re.compile(r"(?<![\w-])\d+(?:\.\d+)?(?![\w-])")
 _WORD = re.compile(r"[^\w\-+]+", re.UNICODE)
 
 # Слишком общие названия: по ним находится обзор рынка, а не технология. Промпт их запрещает,
@@ -233,14 +235,29 @@ def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[s
 
 
 def _is_usable(name: str) -> bool:
-    """Отсеять пустое, слишком общее и слишком длинное — такое кандидатом быть не может."""
+    """Отсеять пустое, слишком общее и похожее на название продукта — такое кандидатом быть не может."""
     words = name.split()
     if not (1 <= len(words) <= 8):
         return False
     if name.lower() in _TOO_BROAD:
         log.info("extract_candidates: «%s» — слишком широкая область, пропускаю", name)
         return False
+    if _looks_like_product(name):
+        log.info("extract_candidates: «%s» похоже на название продукта, а не технологии — пропускаю", name)
+        return False
     return any(ch.isalpha() for ch in name)
+
+
+def _looks_like_product(name: str) -> bool:
+    """«Gemini 3.8 Flash», «Voyager Wingman», «Cato SASE Platform» — это продукты, а не технологии.
+
+    На живом прогоне модель 4B выписывала из новостей ровно их: 15 кандидатов из 16 были названиями
+    моделей, устройств и платформ. Промпт требует писать термин строчными буквами (заглавные — только
+    в аббревиатурах), поэтому имя собственное в середине названия и номер версии — надёжные признаки.
+    """
+    if _VERSION_NUMBER.search(name):
+        return True
+    return any(word[:1].isupper() and not word.isupper() for word in name.split()[1:])
 
 
 def _from_titles(docs: list[Document]) -> list[Candidate]:
