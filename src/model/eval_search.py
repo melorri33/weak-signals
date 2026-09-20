@@ -11,6 +11,7 @@
 Запуск: python -m src.model.eval_search result.json [--domain Финтех]
         python -m src.model.eval_search --run-all   # все 6 областей → data/search_eval.md
         python -m src.model.eval_search --ceiling   # потолок: технологии датасета в собранных документах
+        python -m src.model.eval_search --freeze-phrases  # зафиксировать фразы, чтобы замеры были сравнимы
 """
 
 from __future__ import annotations
@@ -244,6 +245,46 @@ async def run_all(out_dir: Path) -> str:
     return "\n".join(["# Проверка поиска «как у жюри»", "", summary_md(reference, per_domain), *sections])
 
 
+# Зафиксированные поисковые фразы для воспроизводимых замеров. Лежат в data/, а не в репозитории:
+# готовый список поисковых фраз в публичном репозитории выглядел бы как «поиск ограничен заранее
+# заданным списком», что ТЗ запрещает. В рабочем режиме фразы по-прежнему придумывает модель —
+# фиксация нужна только для того, чтобы два замера можно было сравнивать между собой.
+PHRASES_PATH = DATA / "eval_phrases.json"
+
+
+def load_frozen_phrases(path: Path = PHRASES_PATH) -> dict[str, list[str]]:
+    """Фразы из файла, если он есть. Нет файла — пустой словарь, фразы придумает модель."""
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+async def phrases_for(domain: str, query: str, frozen: dict[str, list[str]]) -> list[str]:
+    """Фразы области: из файла, если зафиксированы, иначе от модели."""
+    from src.llm.expand_query import expand_query
+
+    if saved := frozen.get(domain):
+        log.info("Фразы области %s взяты из %s: %d штук", domain, PHRASES_PATH, len(saved))
+        return saved
+    return await expand_query(query) or [query]
+
+
+async def freeze_phrases(path: Path = PHRASES_PATH) -> str:
+    """Сгенерировать фразы по всем областям один раз и сохранить, чтобы замеры стали сравнимыми.
+
+    Без этого expand_query выдаёт каждый раз разный набор, и два замера одной и той же
+    конфигурации расходятся: 20.09 на одинаковых настройках вышло 2032 и 1866 документов,
+    22 и 26 технологий датасета. Любое улучшение меньше такого разброса в шуме не увидеть.
+    """
+    from src.llm.expand_query import expand_query
+
+    frozen = {domain: (await expand_query(query) or [query]) for domain, query in DOMAIN_QUERIES.items()}
+    path.write_text(json.dumps(frozen, ensure_ascii=False, indent=2), encoding="utf-8")
+    lines = [f"Фразы сохранены в {path}", ""]
+    lines += [f"  {domain}: {len(ph)} фраз" for domain, ph in frozen.items()]
+    return "\n".join(lines)
+
+
 async def ceiling(out_dir: Path) -> str:
     """Потолок выдачи: сколько технологий датасета вообще попадает в собранные документы.
 
@@ -256,15 +297,15 @@ async def ceiling(out_dir: Path) -> str:
     «документы после сбора» в нём всегда пропускается.
     """
     from src.common.config import get_settings
-    from src.llm.expand_query import expand_query
     from src.pipeline import deps
 
     settings = get_settings()
     reference = load_reference()
+    frozen = load_frozen_phrases()
     out_dir.mkdir(parents=True, exist_ok=True)
     rows: list[tuple[str, int, int, int, int]] = []
     for domain, query in DOMAIN_QUERIES.items():
-        phrases = await expand_query(query) or [query]
+        phrases = await phrases_for(domain, query, frozen)
         docs = await deps.collect(phrases, limit=settings.max_documents)
         stages = evaluate(reference, domain, documents=docs)
         found = stages[0].found if stages else {}
@@ -304,7 +345,17 @@ def main() -> None:
     ap.add_argument("--domain", choices=list(DOMAIN_QUERIES), help="область датасета (иначе — по тексту запроса)")
     ap.add_argument("--run-all", action="store_true", help="прогнать конвейер по всем 6 областям и собрать отчёт")
     ap.add_argument("--ceiling", action="store_true", help="только сбор: технологии датасета в документах")
+    ap.add_argument(
+        "--freeze-phrases",
+        action="store_true",
+        help="сгенерировать и сохранить поисковые фразы, чтобы замеры были сравнимы",
+    )
     args = ap.parse_args()
+    if args.freeze_phrases:
+        import asyncio
+
+        print(asyncio.run(freeze_phrases()))
+        return
     if args.ceiling:
         import asyncio
 
