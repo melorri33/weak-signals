@@ -48,6 +48,42 @@ ABSTRACT_CHARS = 300
 # поэтому останавливаемся сами и возвращаем то, что успели.
 BUDGET_S = 150.0
 
+# Общие слова, которыми модель подменяет название технологии: «edge ai infrastructure» вместо
+# названия самого чипа, «ai agent certification» вместо технологии, которую сертифицируют. Такие записи
+# занимают место в топ-15 и плодят дубликаты — четыре слота на варианты одного чипа.
+# Проверяем только последнее слово: оно говорит, чем технология является.
+#
+# Список сверен с data/positive_terms.csv: ни один термин датасета организаторов на эти слова
+# не оканчивается. Слово «platform» намеренно не включено: в датасете есть термин с таким
+# последним словом, и запрет отсёк бы настоящее попадание. Прежде чем дополнять список,
+# прогони сверку заново — правило не должно отсекать правильные ответы.
+_TOO_GENERIC_HEAD = {
+    "certification",
+    "ecosystem",
+    "foundation",
+    "framework",
+    "frameworks",
+    "infrastructure",
+    "offering",
+    "platforms",
+    "portfolio",
+    "processing",
+    "product",
+    "products",
+    "service",
+    "services",
+    "solution",
+    "solutions",
+    "stack",
+    "suite",
+    "system",
+    "systems",
+    "technologies",
+    "technology",
+    "tool",
+    "tools",
+}
+
 # Служебные слова: с них название технологии не начинается и смысла не несут.
 _STOPWORDS = {
     "a",
@@ -247,6 +283,9 @@ def _is_usable(name: str) -> bool:
     if _looks_like_product(name):
         log.info("extract_candidates: «%s» похоже на название продукта, а не технологии — пропускаю", name)
         return False
+    if _has_generic_head(name):
+        log.info("extract_candidates: «%s» — общее слово вместо технологии, пропускаю", name)
+        return False
     return any(ch.isalpha() for ch in name)
 
 
@@ -260,6 +299,17 @@ def _looks_like_product(name: str) -> bool:
     if _VERSION_NUMBER.search(name):
         return True
     return any(word[:1].isupper() and not word.isupper() for word in name.split()[1:])
+
+
+def _has_generic_head(name: str) -> bool:
+    """«edge ai infrastructure», «ai agent certification» — сказано про технологию, но не названа она сама.
+
+    Смотрим последнее слово: оно отвечает на вопрос, чем технология является. Если это инфраструктура,
+    решение, сервис или процесс — записи в выдаче не место: по ней не найти публикации точной фразой,
+    а место в топ-15 она займёт.
+    """
+    words = name.split()
+    return bool(words) and words[-1].strip(",.").lower() in _TOO_GENERIC_HEAD
 
 
 def _from_titles(docs: list[Document]) -> list[Candidate]:
