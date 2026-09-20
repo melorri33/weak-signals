@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
+import time
 
 import pytest
 
@@ -107,6 +109,32 @@ async def test_term_stats_int_keys_survive_cache_roundtrip(monkeypatch: pytest.M
 
     assert all(isinstance(y, int) for y in stats.pubs_by_year)
     assert all(isinstance(y, int) for y in stats.news_by_year)
+
+
+async def test_term_stats_queries_sources_in_parallel(monkeypatch: pytest.MonkeyPatch):
+    """OpenAlex/HN/Wikipedia не должны ждать друг друга — иначе term_stats для нескольких
+    кандидатов параллельно (STATS_CONCURRENCY в пайплайне) не укладывается в бюджет времени."""
+    delay = 0.05
+    started: list[float] = []
+
+    async def slow(value):
+        started.append(time.monotonic())
+        await asyncio.sleep(delay)
+        return value
+
+    monkeypatch.setattr(openalex, "year_counts", lambda term, settings, client: slow({2025: 1}))
+    monkeypatch.setattr(openalex, "type_counts", lambda term, settings, client: slow({"article": 1}))
+    monkeypatch.setattr(openalex, "org_count", lambda term, settings, client: slow(1))
+    monkeypatch.setattr(hackernews, "news_by_year", lambda term, settings, client: slow({2025: 1}))
+    monkeypatch.setattr(wikipedia, "has_article", lambda term, lang, settings, client: slow(True))
+
+    await term_stats_module.term_stats("solid-state battery")
+
+    # Не сравниваем с общим временем вызова: создание httpx.AsyncClient в этом окружении само
+    # по себе занимает ~0.5 с независимо от источников — а вот разброс между стартами источников
+    # это не маскирует и достоверно показывает, ждут они друг друга или нет.
+    assert len(started) == 6  # 5 источников + wikipedia_ru
+    assert max(started) - min(started) < delay  # все источники стартовали почти одновременно
 
 
 @pytest.mark.network

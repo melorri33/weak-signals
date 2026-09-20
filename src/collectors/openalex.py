@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
 
@@ -17,10 +17,16 @@ from src.common.schemas import Document, SourceType
 API = "https://api.openalex.org/works"
 # OpenAlex не отдаёт больше 200 групп на group_by — используем как верхнюю границу и для per_page.
 MAX_PER_PAGE = 200
+# Для collect(): старые обзоры и учебники по устоявшимся темам иначе лезут наверх выдачи и
+# вытесняют свежие документы — term_stats считает историю целиком, туда этот фильтр не идёт.
+SEARCH_YEARS_BACK = 3
 
 
-def _params(term: str, settings: Settings, **extra: str) -> dict[str, str]:
-    params = {"filter": f'title_and_abstract.search:"{term}"', **extra}
+def _params(term: str, settings: Settings, extra_filter: str | None = None, **extra: str) -> dict[str, str]:
+    filter_value = f'title_and_abstract.search:"{term}"'
+    if extra_filter:
+        filter_value += f",{extra_filter}"
+    params = {"filter": filter_value, **extra}
     if settings.openalex_api_key:
         params["api_key"] = settings.openalex_api_key
     elif settings.contact_email:
@@ -75,10 +81,12 @@ def _to_document(work: dict, phrase: str) -> Document:
 
 
 async def search(phrase: str, settings: Settings, client: httpx.AsyncClient, limit: int = 200) -> list[Document]:
-    """Документы, у которых фраза встречается в заголовке или аннотации."""
+    """Документы, у которых фраза встречается в заголовке или аннотации, за последние годы."""
+    from_date = date.today() - timedelta(days=365 * SEARCH_YEARS_BACK)
     params = _params(
         phrase,
         settings,
+        extra_filter=f"from_publication_date:{from_date.isoformat()}",
         per_page=str(min(limit, MAX_PER_PAGE)),
         select="id,doi,title,display_name,abstract_inverted_index,publication_date,language,authorships,open_access",
     )
