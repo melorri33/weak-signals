@@ -28,7 +28,7 @@ S = SourceType
         ("https://arxiv.org/abs/2501.00001", S.PREPRINT, M),
         ("https://techcrunch.com/2026/03/01/startup-raises/", S.NEWS, M),
         ("https://siliconangle.com/2026/07/28/ai-model-compression/", S.NEWS, M),
-        ("https://www.eetimes.com/neuromorphic-chips/", S.NEWS, M),
+        ("https://www.eetimes.com/analog-design-notes/", S.NEWS, M),
         ("https://www.datacenterdynamics.com/en/news/cooling/", S.NEWS, M),
         ("https://www.reuters.com/technology/ai/", S.NEWS, M),
         ("https://www.rbc.ru/technology_and_media/", S.NEWS, M),
