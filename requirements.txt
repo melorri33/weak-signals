@@ -21,8 +21,7 @@ catboost>=1.2
 shap>=0.45
 sentence-transformers>=2.7
 
-# LLM
-ollama>=0.4
+# LLM: клиент Ollama не нужен — в src/llm/providers обращаемся к её HTTP API через httpx.
 
 # API и интерфейс
 fastapi>=0.110

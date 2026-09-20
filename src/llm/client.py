@@ -1,7 +1,9 @@
-"""Единый клиент локальной LLM (Ollama). Все вызовы моделей в проекте идут через него.
+"""Единый клиент LLM. Все вызовы моделей в проекте идут через него.
 
-Почему один класс: ТЗ разрешает облачные модели только из своего списка и только после
-согласования. Когда/если понадобится облако — меняем реализацию здесь, остальной код не трогаем.
+Клиент не знает, где живёт модель: сетевой вызов делает транспорт из src/llm/providers, который
+выбирается по LLM_PROVIDER (`ollama` — локально, `yandexgpt` — облако из списка ТЗ). Здесь остаётся
+то, что одинаково для любой модели: кэш ответов, повторная попытка при непрохождении схемы
+и запись вызова в журнал моделей (требование ТЗ).
 
 Использование:
     client = LLMClient.from_settings()
@@ -16,11 +18,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeVar
 
-import httpx
 from pydantic import BaseModel, ValidationError
 
 from src.common.config import get_settings
 from src.common.logs import get_logger, model_timer
+from src.llm.errors import LLMError
+from src.llm.providers import ChatBackend, make_backend
 
 log = get_logger(__name__)
 
@@ -28,39 +31,28 @@ T = TypeVar("T", bound=BaseModel)
 
 # Таймауты и параметры генерации держим здесь: в Settings их добавит владелец ядра, если понадобится.
 REQUEST_TIMEOUT_S = 180.0
-PING_TIMEOUT_S = 3.0
-TEMPERATURE = 0.2
 # Потолок длины ответа. Замер показал: без JSON-схемы модель не останавливается и упирается
 # в потолок — при 2048 токенах это 4 минуты на один вызов. Держим потолок близко к нужной длине
 # и поднимаем его точечно там, где ответ действительно длинный (подробный отчёт по сигналу).
 NUM_PREDICT = 800
-KEEP_ALIVE = "10m"
 
 # Сколько раз просим модель переделать ответ, если он не прошёл проверку схемой.
 RETRIES = 1
 
 
-class LLMError(RuntimeError):
-    """LLM не ответила или ответ не прошёл проверку схемой после повторной попытки."""
-
-
 @dataclass(frozen=True)
 class LLMClient:
-    """Клиент чата с локальной моделью через Ollama."""
+    """Клиент чата: схема, кэш и журнал моделей. Куда идёт запрос — решает транспорт."""
 
     model: str
     provider: str
-    base_url: str
+    backend: ChatBackend
 
     @classmethod
     def from_settings(cls) -> LLMClient:
         s = get_settings()
-        if s.llm_provider != "ollama":
-            raise LLMError(
-                f"Провайдер '{s.llm_provider}' не поддерживается: пока работаем только на локальном Ollama. "
-                "Облачные модели — только из списка ТЗ и после согласования с организаторами."
-            )
-        return cls(model=s.llm_model, provider=s.llm_provider, base_url=s.ollama_url.rstrip("/"))
+        backend = make_backend(s.llm_provider, s.llm_model)
+        return cls(model=backend.model, provider=backend.provider, backend=backend)
 
     async def ask_json(
         self,
@@ -72,8 +64,8 @@ class LLMClient:
     ) -> T:
         """Спросить модель и получить ответ, разобранный в модель pydantic.
 
-        Ollama принимает JSON-схему в поле format, но гарантий нет — поэтому проверяем сами
-        и при неудаче делаем одну повторную попытку с указанием на ошибку.
+        Схему передаём и в Ollama, и в облако, но гарантий ни один провайдер не даёт — поэтому
+        проверяем ответ сами и при неудаче делаем одну повторную попытку с указанием на ошибку.
         """
         messages = _messages(prompt, system)
         json_schema = schema.model_json_schema()
@@ -104,19 +96,8 @@ class LLMClient:
         return await self._chat(step=step, messages=_messages(prompt, system), json_schema=None, max_tokens=max_tokens)
 
     async def is_available(self) -> bool:
-        """Живёт ли Ollama и загружена ли наша модель (для GET /health)."""
-        try:
-            async with self._http(PING_TIMEOUT_S) as http:
-                response = await http.get("/api/tags")
-                response.raise_for_status()
-                models = [m.get("model", "") for m in response.json().get("models", [])]
-        except (httpx.HTTPError, ValueError) as exc:
-            log.warning("Ollama недоступна на %s: %s", self.base_url, exc)
-            return False
-        if self.model not in models:
-            log.warning("Модель %s не скачана. Запусти: ollama pull %s", self.model, self.model)
-            return False
-        return True
+        """Готова ли модель к работе (для GET /health)."""
+        return await self.backend.is_available()
 
     async def _chat(
         self,
@@ -125,7 +106,7 @@ class LLMClient:
         json_schema: dict[str, Any] | None,
         max_tokens: int = NUM_PREDICT,
     ) -> str:
-        """Один вызов /api/chat. Пишет запись в журнал моделей даже если вызов упал.
+        """Один вызов модели. Пишет запись в журнал моделей даже если вызов упал.
 
         Одинаковый запрос к одной модели даёт одинаковый ответ (температура 0.2), поэтому ответ
         кэшируется на диске: повторный прогон и демонстрация не ждут модель по новой.
@@ -134,41 +115,20 @@ class LLMClient:
         if (cached := _cache_get(cache_key)) is not None:
             log.info("step=%s ответ взят из кэша", step)
             return cached
-        body: dict[str, Any] = {
-            "model": self.model,
-            "messages": messages,
-            "stream": False,
-            "keep_alive": KEEP_ALIVE,
-            # Qwen3 по умолчанию «рассуждает» — это втрое дольше. Для наших задач это не нужно.
-            "think": False,
-            "options": {"temperature": TEMPERATURE, "num_predict": max_tokens},
-        }
-        if json_schema is not None:
-            body["format"] = json_schema
         try:
             with model_timer(step=step, model=self.model, provider=self.provider):
-                data = await self._post_chat(body)
-        except httpx.HTTPError as exc:
-            raise LLMError(f"шаг {step}: Ollama не ответила ({exc})") from exc
-        content = (data.get("message") or {}).get("content", "")
+                content = await self.backend.chat(
+                    messages=messages,
+                    json_schema=json_schema,
+                    max_tokens=max_tokens,
+                    timeout_s=REQUEST_TIMEOUT_S,
+                )
+        except LLMError as exc:
+            raise LLMError(f"шаг {step}: {exc}") from exc
         if not content.strip():
             raise LLMError(f"шаг {step}: модель вернула пустой ответ")
         _cache_put(cache_key, content)
         return content
-
-    async def _post_chat(self, body: dict[str, Any]) -> dict[str, Any]:
-        """POST /api/chat. Старые сборки Ollama не знают про think — тогда повторяем без него."""
-        async with self._http(REQUEST_TIMEOUT_S) as http:
-            response = await http.post("/api/chat", json=body)
-            if response.status_code == httpx.codes.BAD_REQUEST and "think" in response.text.lower():
-                log.info("Эта сборка Ollama не принимает think — повторяю запрос без него")
-                response = await http.post("/api/chat", json={k: v for k, v in body.items() if k != "think"})
-            response.raise_for_status()
-            return response.json()
-
-    def _http(self, timeout_s: float) -> httpx.AsyncClient:
-        # trust_env=False: если на машине настроен системный прокси, локальный Ollama через него не ходит.
-        return httpx.AsyncClient(base_url=self.base_url, timeout=timeout_s, trust_env=False)
 
 
 # Кэш ответов модели. Лежит в data/ (папка не коммитится). Ключ — модель + запрос целиком,

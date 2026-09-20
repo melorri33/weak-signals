@@ -1,6 +1,10 @@
-# Инфраструктура проекта. Пока поднимается только база: api и ui добавим, когда появятся
-# src/api/main.py и src/ui/app.py. Ollama запускается на хосте (так проще с видеокартой),
-# из контейнеров к нему обращаемся по host.docker.internal:11434.
+# Инфраструктура проекта: база, API и интерфейс. `docker compose up -d` поднимает всё.
+#
+# Где живёт модель — решает LLM_PROVIDER:
+#   ollama    — модель на хосте, из контейнеров зовём её по host.docker.internal:11434 (по умолчанию);
+#   ollama    — модель отдельным сервисом: `docker compose --profile local-llm up -d`
+#               и OLLAMA_URL_IN_DOCKER=http://ollama:11434 в .env (машине без видеокарты будет тяжело);
+#   yandexgpt — облако из списка ТЗ, нужны YANDEX_API_KEY и YANDEX_FOLDER_ID в .env.
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -21,5 +25,78 @@ services:
       retries: 10
     restart: unless-stopped
 
+  api:
+    build: .
+    image: weak-signals-app
+    container_name: weak-signals-api
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    environment: &app-env
+      # Внутри сети compose база называется db, а не localhost, поэтому DATABASE_URL из .env здесь не годится.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-weak}:${POSTGRES_PASSWORD:-weak}@db:5432/${POSTGRES_DB:-weak_signals}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-qwen3:8b}
+      # Отдельная переменная, а не OLLAMA_URL: compose подставляет значения из того же .env, что читает
+      # приложение на хосте, и OLLAMA_URL=http://localhost:11434 внутри контейнера указывал бы на сам контейнер.
+      # host.docker.internal — Ollama на хосте, http://ollama:11434 — сервис из профиля local-llm.
+      OLLAMA_URL: ${OLLAMA_URL_IN_DOCKER:-http://host.docker.internal:11434}
+      LLM_CACHE: ${LLM_CACHE:-1}
+      YANDEX_API_KEY: ${YANDEX_API_KEY:-}
+      YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID:-}
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+      OPENALEX_API_KEY: ${OPENALEX_API_KEY:-}
+      MAX_DOCUMENTS: ${MAX_DOCUMENTS:-2000}
+      COLLECT_BUDGET_S: ${COLLECT_BUDGET_S:-60}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      # Прогоны и кэш ответов модели видны на хосте и общие у api с ui.
+      - ./data:/app/data
+    extra_hosts:
+      # На Linux host.docker.internal сам не появляется.
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=10).raise_for_status()"]
+      interval: 15s
+      timeout: 12s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  ui:
+    build: .
+    image: weak-signals-app
+    container_name: weak-signals-ui
+    # Интерфейс зовёт конвейер напрямую, поэтому ему нужны те же настройки, что и API.
+    command: streamlit run src/ui/app.py --server.port 8501 --server.address 0.0.0.0
+    environment: *app-env
+    ports:
+      - "${UI_PORT:-8501}:8501"
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Локальная модель в контейнере — для машины без Ollama на хосте. Включается профилем:
+  #   docker compose --profile local-llm up -d
+  #   docker compose exec ollama ollama pull qwen3:8b
+  # и OLLAMA_URL=http://ollama:11434 в .env.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: weak-signals-ollama
+    profiles: ["local-llm"]
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
 volumes:
   db-data:
+  ollama-models:

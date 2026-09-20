@@ -1,0 +1,14 @@
+# В образ не попадает лишнее: без этого сборка тащит виртуальное окружение, кэши и данные прогонов.
+.venv/
+.git/
+.github/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+catboost_info/
+data/
+notebooks/
+reports/
+docs/
+.env
