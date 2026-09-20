@@ -8,6 +8,7 @@
     collectors.collect     → документы из tests/fixtures/documents_example.json
     collectors.term_stats  → None (features.compute умеет работать без статистики)
     storage.save_documents → ничего не делаем
+    storage.get_search_result → None (API отдаёт прогон из памяти)
     trust.level_for        → TrustLevel.MEDIUM
     filters.apply          → «ok», никого не исключаем
 """
@@ -118,3 +119,28 @@ def filter_decision(candidate: Candidate, features: CandidateFeatures) -> Filter
             reason_text="Правила отсева ещё не подключены",
         )
     return real(candidate, features)
+
+
+def get_search_result(run_id: str) -> SearchResult | None:
+    """Достать сохранённый прогон (storage.get_search_result). None — такого прогона в базе нет."""
+    real: Callable[..., Any] | None = _load("src.storage", "get_search_result")
+    if real is None:
+        _warn_once("storage.get_search_result")
+        return None
+    return real(run_id)
+
+
+def database_ok() -> bool:
+    """Отвечает ли база: нужно для GET /health, чтобы сразу видеть, переживёт ли выдача перезапуск."""
+    session_factory: Callable[..., Any] | None = _load("src.storage.db", "get_session")
+    if session_factory is None:
+        return False
+    try:
+        from sqlalchemy import text
+
+        with session_factory() as session:
+            session.execute(text("SELECT 1"))
+    except Exception as exc:
+        log.warning("база не ответила: %s", exc)
+        return False
+    return True
