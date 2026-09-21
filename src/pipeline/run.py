@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from collections import deque
 from collections.abc import Awaitable, Callable
@@ -81,6 +82,14 @@ NEAR_MISSES_IN_LOG = 15
 STATS_CONCURRENCY = 8
 CARDS_CONCURRENCY = 3
 
+# Второй круг: поиск документов по имени кандидата точной фразой.
+# Берём столько кандидатов, сколько нужно на выдачу, плюс запас на тех, у кого карточка
+# не соберётся. Больше брать незачем: документы второго круга нужны именно карточкам.
+SECOND_ROUND_CANDIDATES = TOP_N + 10
+SECOND_ROUND_DOCS = 8
+SECOND_ROUND_BUDGET_S = 120.0
+SECOND_ROUND_CONCURRENCY = 4
+
 STAGE_START = "начинаем"
 STAGE_DONE = "готово"
 
@@ -138,6 +147,9 @@ async def run(
 
     result.scored = scored
 
+    progress("ищем документы по кандидатам")
+    docs.extend(await _second_round(scored, candidates, docs))
+
     progress("собираем карточки")
     _log_near_misses(scored)
     result.top = await _cards(scored, candidates, docs)
@@ -155,6 +167,73 @@ async def run(
         result.duration_s,
     )
     return result
+
+
+def _mentions_name(doc: Document, name: str) -> bool:
+    """Название встречается в документе целой фразой, а не по кускам."""
+    text = f"{doc.title}\n{doc.abstract or ''}"
+    return re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", text, re.IGNORECASE) is not None
+
+
+async def _second_round(
+    scored: list[ScoredCandidate], candidates: list[Candidate], docs: list[Document]
+) -> list[Document]:
+    """Документы, написанные **про** кандидата, а не упоминающие его вскользь.
+
+    Первый круг ищет широкими фразами и приносит документы про своё. Замер 21.09 на корпусе
+    из 7031 документа: из 12 технологий датасета, названных в собранных документах, 9 нашлись
+    ровно в одном документе, а 10 из 12 не попали в заголовок ни разу — то есть документ написан
+    не про них. Карточку по такому упоминанию не построить, а ТЗ требует источников.
+
+    Здесь имя кандидата ищется точной фразой. Тот же приём в диагностике находил 88 технологий
+    датасета из 100 — против 12, названных документами первого круга.
+
+    Шаг необязательный: не успел или ничего не нашёл — карточки собираются по документам первого
+    круга, как раньше. Бюджет держим через asyncio.wait, а не общим таймаутом: отмена посреди
+    ожидания уносила бы уже полученные документы вместе с недополученными.
+    """
+    by_id = {c.id: c for c in candidates}
+    known = {d.id for d in docs}
+    wanted = [by_id[s.candidate_id] for s in scored[:SECOND_ROUND_CANDIDATES] if s.candidate_id in by_id]
+    if not wanted:
+        return []
+
+    semaphore = asyncio.Semaphore(SECOND_ROUND_CONCURRENCY)
+
+    async def for_candidate(candidate: Candidate) -> list[Document]:
+        async with semaphore:
+            found = await deps.collect([candidate.name], limit=SECOND_ROUND_DOCS)
+        fresh: list[Document] = []
+        for doc in found:
+            # Источник мог вернуть документ по отдельным словам — берём только точное совпадение.
+            if not _mentions_name(doc, candidate.name):
+                continue
+            if doc.id not in candidate.document_ids:
+                candidate.document_ids.append(doc.id)
+            if doc.id not in known:
+                known.add(doc.id)
+                fresh.append(doc)
+        return fresh
+
+    tasks = [asyncio.create_task(for_candidate(c)) for c in wanted]
+    done, pending = await asyncio.wait(tasks, timeout=SECOND_ROUND_BUDGET_S)
+    for task in pending:
+        task.cancel()
+    await asyncio.gather(*pending, return_exceptions=True)
+    if pending:
+        log.warning(
+            "Второй круг не успел за %.0f с — %d кандидатов из %d остались с документами первого круга",
+            SECOND_ROUND_BUDGET_S,
+            len(pending),
+            len(wanted),
+        )
+
+    fresh = [doc for task in done if not task.cancelled() and task.exception() is None for doc in task.result()]
+    for doc in fresh:
+        doc.trust = deps.trust_level(doc)
+    deps.save_documents(fresh)
+    log.info("Второй круг: %d кандидатов, новых документов %d", len(done), len(fresh))
+    return fresh
 
 
 async def _features(candidates: list[Candidate], docs: list[Document]) -> list[CandidateFeatures]:
