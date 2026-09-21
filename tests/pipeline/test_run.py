@@ -264,3 +264,22 @@ async def test_source_failures_are_visible_in_result():
     assert [f.source for f in failures] == ["openalex", "arxiv"], "по убыванию числа отказов"
     assert failures[0].count == 3, "повторные отказы одного источника складываются"
     assert "источник молчит" in failures[0].detail, "причина сохранена"
+
+
+def test_outer_candidates_budget_exceeds_inner():
+    """Внешний бюджет шага должен быть заметно больше внутреннего.
+
+    Шаг выделения кандидатов останавливается сам и отдаёт то, что успел выписать. Отмена
+    снаружи приходит посреди вызова модели и уносит всё — 21.09 поднятие внутреннего бюджета
+    выше внешнего обнулило прогон по всем шести областям.
+
+    Два числа лежат в разных файлах, поэтому связь между ними проверяется здесь.
+    """
+    from src.pipeline.candidates import BUDGET_S as inner
+    from src.pipeline.run import CANDIDATES_BUDGET_S as outer
+
+    assert outer > inner, f"внешний бюджет {outer} с не больше внутреннего {inner} с"
+    assert outer - inner >= 60, (
+        f"запас всего {outer - inner:.0f} с: одна пачка документов идёт около 12 с, "
+        "нужен запас хотя бы на несколько"
+    )
