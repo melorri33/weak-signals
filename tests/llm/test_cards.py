@@ -11,6 +11,7 @@ from src.llm.cards import MAX_SOURCES, NO_TEXT, NoSourcesError, keep_known_docum
 from src.llm.client import LLMError
 
 FULL_ANSWER = {
+    "name_ru": "инференс на устройстве",
     "description": "Инференс выполняется на самом устройстве, без обращения к облаку.",
     "advantage": "Ниже задержка и не уходят данные пользователя.",
     "case_example": "Пробуют в смартфонах и промышленных датчиках.",
@@ -57,6 +58,33 @@ async def test_card_sources_from_documents():
     assert [s.url for s in card.sources] == ["https://example.org/a", "https://example.org/b"]
     assert card.sources[0].trust == TrustLevel.HIGH
     assert card.sources[1].source_type == SourceType.NEWS
+
+
+async def test_russian_name_comes_from_the_card_step():
+    """Русское название пишет карточка, а не шаг выделения кандидатов.
+
+    На том шаге это поле занимало половину ответа модели для всех полутора сотен кандидатов,
+    хотя нужно оно пятнадцати. Замер 21.09: без него пачка документов считается 4.0 с вместо 9.0.
+    """
+    card = await make_card(_scored(), [_doc("a")], client=_FakeClient())
+
+    assert card.name_ru == "инференс на устройстве"
+
+
+async def test_known_russian_name_wins_over_the_model():
+    """Если название уже известно, ответ модели его не перебивает."""
+    card = await make_card(_scored(), [_doc("a")], name_ru="Инференс на устройстве", client=_FakeClient())
+
+    assert card.name_ru == "Инференс на устройстве"
+
+
+async def test_card_survives_answer_without_russian_name():
+    """Модель не заполнила поле — карточка всё равно собирается, покажем английское название."""
+    answer = {k: v for k, v in FULL_ANSWER.items() if k != "name_ru"}
+    card = await make_card(_scored(), [_doc("a")], client=_FakeClient(answer))
+
+    assert card.name_ru is None
+    assert card.name == "on-device inference"
 
 
 async def test_card_texts_come_from_the_model():

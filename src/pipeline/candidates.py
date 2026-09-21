@@ -161,11 +161,16 @@ _TOO_BROAD = {
 
 
 class _Candidate(BaseModel):
-    """Одна технология в ответе модели. document_ids — это метки d1, d2… из промпта."""
+    """Одна технология в ответе модели. document_ids — это метки d1, d2… из промпта.
+
+    Русского названия и синонимов здесь нет намеренно. Генерация ответа — 85-90% времени
+    шага (замер 21.09 по таймингам Ollama), а эти два поля занимали половину ответа при том,
+    что конвейеру не нужны: синонимы не читает никто, кроме диагностики, а русское название
+    нужно пятнадцати карточкам из полутора сотен кандидатов — его пишет make_card.
+    Замер: 4.0 с на пачку вместо 9.0, то есть 120 документов в минуту вместо 53.
+    """
 
     name: str = ""
-    name_ru: str | None = None
-    aliases: list[str] = Field(default_factory=list)
     document_ids: list[str] = Field(default_factory=list)
 
 
@@ -291,18 +296,9 @@ def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[s
         key = _slug(name)
         candidate = merged.get(key)
         if candidate is None:
-            merged[key] = Candidate(
-                id=key,
-                name=name,
-                name_ru=(item.name_ru or "").strip() or None,
-                aliases=[a for a in item.aliases if a.strip()],
-                document_ids=doc_ids,
-            )
+            merged[key] = Candidate(id=key, name=name, document_ids=doc_ids)
             continue
         candidate.document_ids.extend(d for d in doc_ids if d not in candidate.document_ids)
-        candidate.aliases.extend(a for a in item.aliases if a.strip() and a not in candidate.aliases)
-        if candidate.name_ru is None and item.name_ru:
-            candidate.name_ru = item.name_ru.strip() or None
 
 
 def _is_usable(name: str) -> bool:

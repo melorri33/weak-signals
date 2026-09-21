@@ -46,12 +46,7 @@ async def test_llm_names_the_technology_not_the_headline():
         [
             {
                 "candidates": [
-                    {
-                        "name": "on-device inference",
-                        "name_ru": "инференс на устройстве",
-                        "aliases": ["edge inference"],
-                        "document_ids": ["d1", "d2"],
-                    }
+                    {"name": "on-device inference", "document_ids": ["d1", "d2"]}
                 ]
             }
         ]
@@ -61,8 +56,10 @@ async def test_llm_names_the_technology_not_the_headline():
 
     assert [c.name for c in candidates] == ["on-device inference"]
     assert candidates[0].id == "on-device-inference"
-    assert candidates[0].name_ru == "инференс на устройстве"
     assert sorted(candidates[0].document_ids) == ["a", "b"]
+    # Русское название на этом шаге не спрашиваем: его пишет make_card для пятнадцати карточек,
+    # а не для полутора сотен кандидатов. См. docstring _Candidate.
+    assert candidates[0].name_ru is None
 
 
 async def test_same_technology_from_two_batches_is_merged():
