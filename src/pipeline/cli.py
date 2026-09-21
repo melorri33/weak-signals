@@ -88,6 +88,14 @@ def _print_result(result: SearchResult) -> None:
         print(f"\n{LINE}\nИСКЛЮЧЕНО ({len(result.excluded)})")
         for decision in result.excluded:
             print(f"  — {decision.name} [{decision.reason_code}]: {decision.reason_text}")
+    if result.source_failures:
+        # Отказ источника не валит прогон, поэтому его легко не заметить: карточек столько же,
+        # а времени даже меньше. Показываем рядом с выдачей, а не только в логе.
+        total = sum(f.count for f in result.source_failures)
+        print(f"\n{LINE}\nИСТОЧНИКИ НЕ ОТВЕТИЛИ ({total} раз)")
+        for failure in result.source_failures:
+            print(f"  — {failure.source} ×{failure.count}: {failure.detail}")
+        print("  Выдача построена без них — часть признаков могла остаться пустой.")
     print(f"\n{LINE}\nВЫЗОВЫ МОДЕЛЕЙ")
     for call in result.model_calls:
         print(f"  {call.step}: {call.model} ({call.provider}), {call.duration_ms} мс")

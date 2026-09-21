@@ -17,7 +17,7 @@ from typing import TypeVar
 from uuid import uuid4
 
 from src.common.config import get_settings
-from src.common.logs import collected_model_calls, get_logger, start_run_log
+from src.common.logs import collected_model_calls, collected_source_failures, get_logger, start_run_log
 from src.common.schemas import (
     CONFIDENT_THRESHOLD,
     TOP_N,
@@ -95,6 +95,7 @@ async def run(
     def progress(stage: str) -> None:
         result.stage = stage
         result.model_calls = collected_model_calls()
+        result.source_failures = collected_source_failures()
         deps.save_search_result(result)
         if on_progress is not None:
             on_progress(result)
@@ -340,6 +341,7 @@ def _failed(result: SearchResult, started: float, message: str) -> SearchResult:
     result.error = message
     result.duration_s = round(time.perf_counter() - started, 1)
     result.model_calls = collected_model_calls()
+    result.source_failures = collected_source_failures()
     deps.save_search_result(result)
     log.error("Прогон %s остановлен: %s", result.run_id, message)
     return result

@@ -238,3 +238,29 @@ async def test_cards_keep_finished_work_when_budget_runs_out(monkeypatch: pytest
 
     # Первая пачка — c0, c1, c2: c2 завис, но c0 и c1 посчитаны и должны остаться.
     assert [c.candidate_id for c in cards] == ["c0", "c1"]
+
+
+async def test_source_failures_are_visible_in_result():
+    """Отказ источника попадает в выдачу, а не только в лог.
+
+    Падение источника не валит прогон — это требование ТЗ. Из-за этого мёртвый источник
+    выглядит как обычная работа: карточек столько же, времени даже меньше, потому что отказ
+    приходит мгновенно. 21.09 исчерпанный лимит OpenAlex дважды незаметно испортил замеры.
+    """
+    from src.collectors.http import safe_call
+    from src.common.logs import collected_source_failures, start_run_log
+
+    start_run_log()
+
+    async def falls() -> None:
+        raise TimeoutError("источник молчит")
+
+    errors: list[str] = []
+    for _ in range(3):
+        assert await safe_call("openalex", falls, errors) is None
+    assert await safe_call("arxiv", falls, errors) is None
+
+    failures = collected_source_failures()
+    assert [f.source for f in failures] == ["openalex", "arxiv"], "по убыванию числа отказов"
+    assert failures[0].count == 3, "повторные отказы одного источника складываются"
+    assert "источник молчит" in failures[0].detail, "причина сохранена"
