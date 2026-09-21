@@ -7,9 +7,9 @@
 import pytest
 from pydantic import BaseModel
 
+from src.common.config import get_settings
 from src.llm.client import LLMClient
 from src.llm.providers import make_backend
-from src.llm.providers.yandexgpt import get_yandex_settings
 
 pytestmark = pytest.mark.network
 
@@ -44,7 +44,7 @@ async def test_cloud_json_answer_matches_schema():
     Тест для того, у кого есть доступ к облаку: он же покажет время ответа
     (`pytest -m network -k cloud --durations=0`).
     """
-    settings = get_yandex_settings()
+    settings = get_settings()
     if not settings.yandex_api_key or not settings.yandex_folder_id:
         pytest.skip("нет YANDEX_API_KEY / YANDEX_FOLDER_ID в .env")
 

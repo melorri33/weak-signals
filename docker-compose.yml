@@ -35,10 +35,10 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-weak}:${POSTGRES_PASSWORD:-weak}@db:5432/${POSTGRES_DB:-weak_signals}
       LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
       LLM_MODEL: ${LLM_MODEL:-qwen3:8b}
-      # Отдельная переменная, а не OLLAMA_URL: compose подставляет значения из того же .env, что читает
-      # приложение на хосте, и OLLAMA_URL=http://localhost:11434 внутри контейнера указывал бы на сам контейнер.
+      # Адрес Ollama для контейнеров: внутри контейнера localhost — это он сам. Приложение само
+      # понимает, что работает в контейнере (файл /.dockerenv), и берёт адрес из этой переменной.
       # host.docker.internal — Ollama на хосте, http://ollama:11434 — сервис из профиля local-llm.
-      OLLAMA_URL: ${OLLAMA_URL_IN_DOCKER:-http://host.docker.internal:11434}
+      OLLAMA_URL_IN_DOCKER: ${OLLAMA_URL_IN_DOCKER:-http://host.docker.internal:11434}
       LLM_CACHE: ${LLM_CACHE:-1}
       YANDEX_API_KEY: ${YANDEX_API_KEY:-}
       YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID:-}

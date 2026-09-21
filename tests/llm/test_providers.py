@@ -1,6 +1,7 @@
 """Выбор провайдера и облачный транспорт: тела запросов, ошибки и журнал моделей — всё офлайн."""
 
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -11,6 +12,7 @@ from src.common.logs import collected_model_calls, start_run_log
 from src.llm.client import LLMClient
 from src.llm.errors import LLMError
 from src.llm.providers import OllamaBackend, YandexGPTBackend, make_backend
+from src.llm.providers import ollama as ollama_module
 from src.llm.providers import yandexgpt as yandex_module
 
 # Настоящий класс клиента: подмена делается несколько раз за тест, и брать его из httpx уже нельзя.
@@ -27,9 +29,9 @@ class Answer(BaseModel):
 
 @pytest.fixture
 def cloud_settings(monkeypatch: pytest.MonkeyPatch):
-    """Ключи облака как из .env, но без .env: настройки читаются через get_yandex_settings."""
-    settings = yandex_module.YandexSettings(yandex_api_key=KEY, yandex_folder_id=FOLDER)
-    monkeypatch.setattr(yandex_module, "get_yandex_settings", lambda: settings)
+    """Ключи облака как из .env, но без .env: настройки общие, из src/common/config.py."""
+    settings = Settings(yandex_api_key=KEY, yandex_folder_id=FOLDER)
+    monkeypatch.setattr(yandex_module, "get_settings", lambda: settings)
     return settings
 
 
@@ -56,10 +58,26 @@ def _cloud_answer(content: str, finish_reason: str = "stop") -> httpx.Response:
     return httpx.Response(200, json=body)
 
 
-def test_ollama_is_the_default_provider():
+def test_ollama_is_the_default_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(ollama_module, "get_settings", lambda: Settings(ollama_url="http://localhost:11434"))
+    monkeypatch.setattr(ollama_module, "DOCKER_MARKER", tmp_path / "не-контейнер")
     backend = make_backend("ollama", "qwen3:8b")
     assert isinstance(backend, OllamaBackend)
     assert backend.provider == "ollama" and backend.model == "qwen3:8b"
+    assert backend.base_url == "http://localhost:11434"
+
+
+def test_in_container_ollama_is_looked_up_at_another_address(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Внутри контейнера localhost — это сам контейнер, и модель на хосте так не найти."""
+    marker = tmp_path / ".dockerenv"
+    marker.touch()
+    monkeypatch.setattr(ollama_module, "DOCKER_MARKER", marker)
+    monkeypatch.setattr(
+        ollama_module,
+        "get_settings",
+        lambda: Settings(ollama_url="http://localhost:11434", ollama_url_in_docker="http://host.docker.internal:11434"),
+    )
+    assert make_backend("ollama", "qwen3:8b").base_url == "http://host.docker.internal:11434"
 
 
 def test_unknown_provider_names_what_is_available():
@@ -76,7 +94,7 @@ def test_cloud_model_outside_the_list_is_refused(cloud_settings):
 
 
 def test_cloud_without_keys_says_which_variables_to_fill(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(yandex_module, "get_yandex_settings", lambda: yandex_module.YandexSettings())
+    monkeypatch.setattr(yandex_module, "get_settings", lambda: Settings(yandex_api_key="", yandex_folder_id=""))
     with pytest.raises(LLMError) as exc:
         make_backend("yandexgpt", MODEL)
     assert "YANDEX_API_KEY" in str(exc.value) and "YANDEX_FOLDER_ID" in str(exc.value)

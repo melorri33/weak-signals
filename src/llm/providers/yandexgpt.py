@@ -19,12 +19,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Any
 
 import httpx
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from src.common.config import get_settings
 from src.common.logs import get_logger
 from src.llm.errors import LLMError
 
@@ -47,25 +46,6 @@ ALLOWED_MODELS = {
 }
 
 
-class YandexSettings(BaseSettings):
-    """Доступы к облаку.
-
-    Живут здесь, а не в src/common/config.py: тот файл ведёт владелец ядра. Как только он перенесёт
-    эти три переменные в Settings, модуль будет читать их оттуда, а .env менять не придётся.
-    """
-
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
-
-    yandex_api_key: str = ""
-    yandex_folder_id: str = ""
-    yandex_api_url: str = "https://ai.api.cloud.yandex.net/v1/chat/completions"
-
-
-@lru_cache
-def get_yandex_settings() -> YandexSettings:
-    return YandexSettings()
-
-
 @dataclass(frozen=True)
 class YandexGPTBackend:
     """Чат с YandexGPT. `model` — короткое имя из ALLOWED_MODELS, оно же попадает в журнал моделей."""
@@ -78,7 +58,7 @@ class YandexGPTBackend:
 
     @classmethod
     def from_settings(cls, model: str) -> YandexGPTBackend:
-        s = get_yandex_settings()
+        s = get_settings()
         model = model.strip()
         if model not in ALLOWED_MODELS:
             raise LLMError(
