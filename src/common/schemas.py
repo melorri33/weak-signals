@@ -195,6 +195,21 @@ class ModelCall(BaseModel):
     ts: datetime = Field(default_factory=_now)
 
 
+class SourceFailure(BaseModel):
+    """Источник, который не ответил во время прогона.
+
+    Нужен, чтобы отказ было видно в результате, а не только в логе. Падение источника
+    не валит прогон — это требование ТЗ, — но из-за этого мёртвый источник выглядит как
+    обычная работа: карточек столько же, времени даже меньше (отказ приходит мгновенно).
+    21.09 исчерпанный лимит OpenAlex дважды незаметно испортил замеры и увёл к неверным
+    выводам, потому что понять это можно было только вычитыванием лога.
+    """
+
+    source: str
+    detail: str = ""
+    count: int = 1
+
+
 class SearchResult(BaseModel):
     """Результат прогона по запросу. Пока status='running', UI показывает stage как прогресс."""
 
@@ -213,6 +228,10 @@ class SearchResult(BaseModel):
         description="все кандидаты после отсева с оценкой, по убыванию: «не нашли» vs «нашли, но низко»",
     )
     model_calls: list[ModelCall] = Field(default_factory=list)
+    source_failures: list[SourceFailure] = Field(
+        default_factory=list,
+        description="источники, не ответившие за прогон: отказ виден в выдаче, а не только в логе",
+    )
     started_at: datetime = Field(default_factory=_now)
     duration_s: float | None = None
     error: str | None = None

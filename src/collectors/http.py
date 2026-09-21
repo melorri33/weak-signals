@@ -8,7 +8,7 @@ from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
 from src.common.config import Settings
-from src.common.logs import get_logger
+from src.common.logs import get_logger, note_source_failure
 
 log = get_logger(__name__)
 
@@ -50,4 +50,7 @@ async def safe_call(source: str, call: Callable[[], Awaitable[T]], errors: list[
     except Exception as exc:  # источник не должен валить весь сбор
         log.warning("источник %s не ответил: %s", source, exc)
         errors.append(source)
+        # Отказ идёт ещё и в журнал прогона: иначе мёртвый источник виден только тому,
+        # кто читает лог, а в результате выглядит как обычная работа.
+        note_source_failure(source, f"{type(exc).__name__}: {exc}")
         return None
