@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -15,6 +16,11 @@ from src.common.logs import get_logger
 from src.llm.errors import LLMError
 
 log = get_logger(__name__)
+
+# Признак контейнера: файл создаёт сам Docker. Внутри контейнера localhost — это он сам,
+# поэтому адрес Ollama берём из отдельной настройки (OLLAMA_URL_IN_DOCKER), иначе конвейер
+# в контейнере ищет модель у себя и не находит, хотя на хосте она работает.
+DOCKER_MARKER = Path("/.dockerenv")
 
 PING_TIMEOUT_S = 3.0
 KEEP_ALIVE = "10m"
@@ -31,7 +37,11 @@ class OllamaBackend:
 
     @classmethod
     def from_settings(cls, model: str) -> OllamaBackend:
-        return cls(model=model, base_url=get_settings().ollama_url.rstrip("/"))
+        settings = get_settings()
+        if DOCKER_MARKER.exists():
+            log.info("Работаем в контейнере — Ollama ищем на %s", settings.ollama_url_in_docker)
+            return cls(model=model, base_url=settings.ollama_url_in_docker.rstrip("/"))
+        return cls(model=model, base_url=settings.ollama_url.rstrip("/"))
 
     async def chat(
         self,
