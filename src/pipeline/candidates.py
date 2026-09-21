@@ -229,18 +229,36 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
     return list(merged.values())
 
 
-def _order_for_llm(docs: list[Document]) -> list[Document]:
-    """Сначала новости, потом наука: у организаторов 71% источников — техноновости.
+# На сколько новостей приходится один научный документ в очереди к модели. Новостей больше,
+# потому что у организаторов 71% источников датасета — техноновости. Но не все: наука находит
+# технологии, которых в новостях нет (замер 21.09: arXiv находит 69 технологий датасета из 100,
+# новостные ленты — 63).
+NEWS_PER_PAPER = 2
 
-    Внутри группы свежие идут первыми, документы без даты — последними.
+
+def _order_for_llm(docs: list[Document]) -> list[Document]:
+    """Новости и наука вперемежку: по две новости на один научный документ.
+
+    Раньше очередь была строгой — сначала все новости, потом вся наука. При этом шаг успевает
+    прочитать около сотни документов из тысячи с лишним, поэтому до науки очередь не доходила
+    никогда: её собирали, тратили на это время и бюджет OpenAlex, и выбрасывали не глядя.
+
+    Внутри каждой группы свежие идут первыми, документы без даты — последними.
     """
 
-    def key(doc: Document) -> tuple[int, int]:
-        news_first = 0 if doc.source_type == SourceType.NEWS else 1
-        recent_first = -doc.published.toordinal() if doc.published else 0
-        return (news_first, recent_first)
+    def key(doc: Document) -> int:
+        return -doc.published.toordinal() if doc.published else 0
 
-    return sorted(docs, key=key)
+    news = sorted((d for d in docs if d.source_type == SourceType.NEWS), key=key)
+    papers = sorted((d for d in docs if d.source_type != SourceType.NEWS), key=key)
+    mixed: list[Document] = []
+    n = p = 0
+    while n < len(news) or p < len(papers):
+        mixed.extend(news[n : n + NEWS_PER_PAPER])
+        n += NEWS_PER_PAPER
+        mixed.extend(papers[p : p + 1])
+        p += 1
+    return mixed
 
 
 def _documents_block(labels: dict[str, Document]) -> str:
