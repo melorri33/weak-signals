@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from src.common.schemas import Candidate, Document, SourceType
 from src.llm.client import LLMError
+from src.pipeline import candidates as candidates_module
 from src.pipeline.candidates import extract_candidates, warn_on_long_names
 
 
@@ -197,3 +198,42 @@ async def test_stops_itself_before_the_budget_ends(monkeypatch: pytest.MonkeyPat
 
     assert result, "то, что успели выписать, должно вернуться"
     assert len(client.prompts) < 5, "последние пачки не берём — они не успеют закончиться"
+
+
+def test_order_mixes_news_and_science():
+    """Наука должна попадать в очередь к модели, а не ждать за всеми новостями.
+
+    Шаг успевает прочитать около сотни документов из тысячи с лишним. При строгой очереди
+    «сначала новости» наука не доходила до модели никогда, хотя arXiv находит технологий
+    датасета больше, чем новостные ленты (замер 21.09: 69 против 63 из 100).
+    """
+    docs = [
+        Document(
+            id=f"n{i}",
+            source="techcrunch.com",
+            source_type=SourceType.NEWS,
+            title=f"Новость {i}",
+            url=f"https://example.com/n{i}",
+        )
+        for i in range(20)
+    ] + [
+        Document(
+            id=f"p{i}",
+            source="arxiv",
+            source_type=SourceType.PREPRINT,
+            title=f"Препринт {i}",
+            url=f"https://example.org/p{i}",
+        )
+        for i in range(20)
+    ]
+
+    order = candidates_module._order_for_llm(docs)
+
+    assert len(order) == len(docs), "ни один документ не теряется"
+    first_twelve = [d.source_type for d in order[:12]]
+    assert SourceType.NEWS in first_twelve and SourceType.PREPRINT in first_twelve, (
+        "в первой дюжине — то, что реально успеет прочитать модель, — должны быть оба вида"
+    )
+    assert first_twelve.count(SourceType.NEWS) > first_twelve.count(SourceType.PREPRINT), (
+        "новостей больше: 71% источников датасета организаторов — техноновости"
+    )
