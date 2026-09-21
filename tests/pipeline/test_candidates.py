@@ -238,3 +238,28 @@ def test_order_mixes_news_and_science():
         "5 технологий датасета из 12 при чередовании один к одному, 4 при двух новостях на статью "
         "и 2 при строгой очереди «сначала новости»"
     )
+
+
+async def test_description_instead_of_a_term_is_dropped():
+    """Название длиннее четырёх слов — это описание, а не термин.
+
+    Замер 21.09 по прогону из шести областей: у названий в 2-3 слова статистика публикаций
+    находится в 70-94% случаев, у пятисловных и длиннее — в 14%, средняя оценка 0.06,
+    и ни одно не попало в топ-15. По фразе, которой никто не пишет, публикаций не найти,
+    и такой кандидат ранжируется вслепую, занимая место в списке.
+    """
+    docs = [_doc("a", "Startup raises $12M to run language models on phones", SourceType.NEWS)]
+    client = _FakeClient(
+        [
+            {
+                "candidates": [
+                    {"name": "identity management for large language model agents", "document_ids": ["d1"]},
+                    {"name": "on-device inference", "document_ids": ["d1"]},
+                ]
+            }
+        ]
+    )
+
+    candidates = await extract_candidates(docs, client=client)
+
+    assert [c.name for c in candidates] == ["on-device inference"]
