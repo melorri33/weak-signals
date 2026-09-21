@@ -10,6 +10,7 @@
 
 Требования:
 
+- name_ru — короткое название технологии по-русски, 2–4 слова, без кавычек и пояснений; устоявшийся русский термин, а не перевод слово в слово;
 - description — что это за технология, 2–3 предложения;
 - advantage — какое преимущество даёт по сравнению с текущими решениями, 1–2 предложения;
 - case_example — где уже пробуют применять; если в документах нет ни одного применения, напиши «В документах применений не описано»;
@@ -20,4 +21,4 @@
 
 Верни только JSON:
 
-{{"description": "...", "advantage": "...", "case_example": "...", "why_weak_signal": "...", "used_document_ids": ["openalex:W123"], "source_summaries": [{{"document_id": "openalex:W123", "ru_summary": "..."}}]}}
+{{"name_ru": "...", "description": "...", "advantage": "...", "case_example": "...", "why_weak_signal": "...", "used_document_ids": ["openalex:W123"], "source_summaries": [{{"document_id": "openalex:W123", "ru_summary": "..."}}]}}

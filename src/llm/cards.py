@@ -40,6 +40,7 @@ class _SourceSummary(BaseModel):
 class _CardText(BaseModel):
     """Схема ответа модели: только тексты, ничего проверяемого мы у неё не спрашиваем."""
 
+    name_ru: str = ""
     description: str = ""
     advantage: str = ""
     case_example: str = ""
@@ -68,7 +69,10 @@ async def make_card(
     return SignalCard(
         candidate_id=scored.candidate_id,
         name=scored.name,
-        name_ru=name_ru,
+        # Русское название пишет модель здесь, а не на шаге выделения кандидатов: там оно
+        # занимало половину ответа для всех полутора сотен кандидатов, а нужно пятнадцати.
+        # Аргумент name_ru остаётся: если название уже известно, оно важнее ответа модели.
+        name_ru=name_ru or text.name_ru.strip() or None,
         score=scored.score,
         description=text.description or NO_TEXT,
         advantage=text.advantage or "Не описано в источниках.",

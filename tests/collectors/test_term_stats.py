@@ -52,7 +52,6 @@ def _patch_all(
 
     monkeypatch.setattr(openalex, "year_counts", fake_years)
     monkeypatch.setattr(openalex, "type_counts", fake_types)
-    monkeypatch.setattr(openalex, "org_count", fake_orgs)
     monkeypatch.setattr(hackernews, "news_by_year", fake_news)
     monkeypatch.setattr(wikipedia, "has_article", fake_wiki)
     return calls
@@ -67,7 +66,9 @@ async def test_term_stats_fills_all_available_fields(monkeypatch: pytest.MonkeyP
     assert stats.term == "solid-state battery"
     assert stats.pubs_by_year == {2024: 5, 2025: 10}
     assert stats.pubs_by_type == {"article": 10}
-    assert stats.distinct_orgs == 7
+    # Число организаций больше не запрашиваем: третий запрос к OpenAlex на кандидата,
+    # а поле не читает ни модель, ни правила отсева. См. docstring term_stats.
+    assert stats.distinct_orgs is None
     assert stats.news_by_year == {2025: 3}
     assert stats.wikipedia_en is True
     assert stats.wikipedia_ru is False
@@ -89,7 +90,7 @@ async def test_term_stats_records_failed_source_as_none_with_error(monkeypatch: 
 
     assert stats.pubs_by_year == {}  # None по контракту превращается в {}, не в 0
     assert "openalex_years" in stats.errors
-    assert stats.distinct_orgs == 7  # падение одного источника не задевает остальные
+    assert stats.pubs_by_type == {"article": 10}  # падение одного источника не задевает остальные
 
 
 async def test_term_stats_uses_cache_on_second_call(monkeypatch: pytest.MonkeyPatch):
@@ -124,7 +125,6 @@ async def test_term_stats_queries_sources_in_parallel(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr(openalex, "year_counts", lambda term, settings, client: slow({2025: 1}))
     monkeypatch.setattr(openalex, "type_counts", lambda term, settings, client: slow({"article": 1}))
-    monkeypatch.setattr(openalex, "org_count", lambda term, settings, client: slow(1))
     monkeypatch.setattr(hackernews, "news_by_year", lambda term, settings, client: slow({2025: 1}))
     monkeypatch.setattr(wikipedia, "has_article", lambda term, lang, settings, client: slow(True))
 
@@ -133,7 +133,7 @@ async def test_term_stats_queries_sources_in_parallel(monkeypatch: pytest.Monkey
     # Не сравниваем с общим временем вызова: создание httpx.AsyncClient в этом окружении само
     # по себе занимает ~0.5 с независимо от источников — а вот разброс между стартами источников
     # это не маскирует и достоверно показывает, ждут они друг друга или нет.
-    assert len(started) == 6  # 5 источников + wikipedia_ru
+    assert len(started) == 5  # годы, типы, Hacker News и две Википедии
     assert max(started) - min(started) < delay  # все источники стартовали почти одновременно
 
 

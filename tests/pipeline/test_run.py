@@ -283,3 +283,79 @@ def test_outer_candidates_budget_exceeds_inner():
         f"запас всего {outer - inner:.0f} с: одна пачка документов идёт около 12 с, "
         "нужен запас хотя бы на несколько"
     )
+
+
+async def test_second_round_finds_documents_about_the_candidate():
+    """Второй круг ищет имя кандидата точной фразой и привязывает найденное к нему.
+
+    Замер 21.09: из 12 технологий датасета, названных в собранных документах, 9 встретились
+    ровно в одном документе, а 10 из 12 — ни разу в заголовке. Документ написан про другое,
+    карточку по нему не построить. Поэтому имя кандидата ищется отдельно.
+    """
+    from src.pipeline.run import _second_round
+
+    candidate = Candidate(id="quantum-sensing", name="quantum sensing", document_ids=["old"])
+    old = Document(
+        id="old",
+        source="openalex",
+        source_type=SourceType.PAPER,
+        title="Обзор методов измерений",
+        url="https://example.org/old",
+        abstract="Среди прочего упоминается quantum sensing.",
+    )
+    about = Document(
+        id="new",
+        source="arxiv",
+        source_type=SourceType.PREPRINT,
+        title="Quantum sensing with cold atoms",
+        url="https://example.org/new",
+        abstract="Работа целиком про quantum sensing.",
+    )
+    other = Document(
+        id="noise",
+        source="arxiv",
+        source_type=SourceType.PREPRINT,
+        title="Quantum computing hardware",
+        url="https://example.org/noise",
+        abstract="Про кубиты, но не про то, что искали.",
+    )
+
+    async def collect(phrases: list[str], limit: int) -> list[Document]:
+        assert phrases == ["quantum sensing"], "ищем именно именем кандидата"
+        return [about, other]
+
+    deps.collect, saved = collect, deps.collect
+    try:
+        fresh = await _second_round(
+            [ScoredCandidate(candidate_id="quantum-sensing", name="quantum sensing", score=0.9)],
+            [candidate],
+            [old],
+        )
+    finally:
+        deps.collect = saved
+
+    assert [d.id for d in fresh] == ["new"], "документ без точного совпадения не берём"
+    assert candidate.document_ids == ["old", "new"], "документ второго круга привязан к кандидату"
+
+
+async def test_second_round_survives_source_failure():
+    """Источник не ответил — карточки собираются по документам первого круга, прогон идёт дальше."""
+    from src.pipeline.run import _second_round
+
+    candidate = Candidate(id="quantum-sensing", name="quantum sensing", document_ids=["old"])
+
+    async def failing(phrases: list[str], limit: int) -> list[Document]:
+        raise RuntimeError("источник недоступен")
+
+    deps.collect, saved = failing, deps.collect
+    try:
+        fresh = await _second_round(
+            [ScoredCandidate(candidate_id="quantum-sensing", name="quantum sensing", score=0.9)],
+            [candidate],
+            [],
+        )
+    finally:
+        deps.collect = saved
+
+    assert fresh == []
+    assert candidate.document_ids == ["old"]
