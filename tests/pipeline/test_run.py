@@ -359,3 +359,48 @@ async def test_second_round_survives_source_failure():
 
     assert fresh == []
     assert candidate.document_ids == ["old"]
+
+
+def test_name_variants_collapse_to_the_narrowest():
+    """Из нескольких названий одной технологии в выдачу идёт самое узкое.
+
+    Замер 21.09: 5 мест из 90 в топ-15 занимали варианты одного и того же. Жюри засчитает
+    их как одно совпадение, а место отнято у другой технологии. Оставляем узкое, потому что
+    сверка требует, чтобы все слова термина датасета были в нашем названии: узкое засчитается
+    и против широкого термина, широкое против узкого — нет.
+    """
+    from src.pipeline.run import drop_name_variants
+
+    scored = [
+        ScoredCandidate(candidate_id="a", name="neuromorphic chip", score=0.90),
+        ScoredCandidate(candidate_id="b", name="photonic neuromorphic chip", score=0.80),
+        ScoredCandidate(candidate_id="c", name="solid-state battery", score=0.70),
+    ]
+
+    kept = drop_name_variants(scored)
+
+    assert [c.name for c in kept] == ["photonic neuromorphic chip", "solid-state battery"]
+
+
+def test_different_technologies_are_not_merged():
+    """Общее слово в названиях — не повод считать технологии одной."""
+    from src.pipeline.run import drop_name_variants
+
+    scored = [
+        ScoredCandidate(candidate_id="a", name="sodium-ion battery", score=0.9),
+        ScoredCandidate(candidate_id="b", name="solid-state battery", score=0.8),
+    ]
+
+    assert len(drop_name_variants(scored)) == 2
+
+
+def test_single_word_names_are_left_alone():
+    """Односложные названия не схлопываем: по одному слову судить нельзя."""
+    from src.pipeline.run import drop_name_variants
+
+    scored = [
+        ScoredCandidate(candidate_id="a", name="memristor", score=0.9),
+        ScoredCandidate(candidate_id="b", name="metamaterial", score=0.8),
+    ]
+
+    assert len(drop_name_variants(scored)) == 2
