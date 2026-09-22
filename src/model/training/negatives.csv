@@ -252,3 +252,33 @@ SWIFT messaging,Сообщения SWIFT,Финтех,mature,Зрелая тех
 mobile money,Мобильные деньги (M-Pesa),Финтех,mature,Зрелая технология: массовые продукты или стандарты
 payment tokenization,Токенизация платёжных карт,Финтех,mature,Зрелая технология: массовые продукты или стандарты
 alternative data credit scoring,Скоринг на альтернативных данных,Финтех,mainstream,"Быстро растёт, но уже массовое направление с большим корпусом публикаций"
+smart home controls,smart home controls,Edge,not_a_technology,"функциональная область, а не технология"
+rectified linear unit,rectified linear unit,Edge,not_a_technology,"математическая функция, а не технология"
+physical ai,physical ai,Edge,not_a_technology,философия или направление
+arduino nano,arduino nano,Edge,product,название с собственным именем
+large language models,large language models,Edge,too_broad,широкое направление
+agent os,agent os,Защита ИИ,product,название операционной системы
+non-invasive respiratory support,non-invasive respiratory support,Защита ИИ,not_a_technology,медицинская процедура
+ai training data,ai training data,Защита ИИ,not_a_technology,данные для обучения
+enterprise ai,enterprise ai,Защита ИИ,too_broad,широкое направление
+financial literacy,financial literacy,Защита ИИ,not_a_technology,процесс обучения
+data governance,data governance,Защита ИИ,too_broad,широкое направление
+safety evaluators,safety evaluators,Защита ИИ,not_a_technology,роль или функция
+chatgpt,chatgpt,Защита ИИ,product,название модели
+gemini,gemini,Защита ИИ,product,название модели
+ai in healthcare,ai in healthcare,Защита ИИ,too_broad,широкая область применения
+agentic enterprise,agentic enterprise,Индустриальный ИИ,too_broad,широкое направление
+iot,iot,Индустриальный ИИ,too_broad,широкая область
+data cloud,data cloud,Индустриальный ИИ,too_broad,широкая область
+nvidia jetson orin,nvidia jetson orin,Инфраструктура ИИ,product,название устройства с моделью
+environmental exploration,environmental exploration,Роботы,not_a_technology,процесс изучения окружающей среды
+shape adaptation,shape adaptation,Роботы,not_a_technology,изменение формы
+series a funding,series a funding,Роботы,not_a_technology,"финансирование, а не технология"
+anti-money laundering law,anti-money laundering law,Финтех,not_a_technology,"закон, регулирующий противодействие отмыванию денег"
+network analytics,network analytics,Финтех,too_broad,широкий класс аналитики
+behavioral signals,behavioral signals,Финтех,too_broad,широкий класс сигналов
+fraud detection models,fraud detection models,Финтех,too_broad,широкий класс моделей
+cross-border payments,cross-border payments,Финтех,too_broad,широкий класс платежей
+fraud detection,fraud detection,Финтех,not_a_technology,процесс выявления
+ai,ai,Финтех,too_broad,широкое направление
+credit scores,credit scores,Финтех,not_a_technology,метрика оценки
