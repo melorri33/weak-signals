@@ -30,6 +30,7 @@ from sklearn.model_selection import StratifiedKFold
 
 from src.common.schemas import Candidate, TermStats
 from src.features import compute
+from src.model.dataset import build_labeled_set  # noqa: E402
 from src.model.vectorize import FEATURE_NAMES, FEATURES, to_row
 
 DATA = Path("data")
@@ -164,8 +165,19 @@ def write_report(m: dict[str, float], by_kind: pd.Series, importance: pd.Series,
     (REPORTS / "metrics.md").write_text("\n".join(lines), encoding="utf-8")
 
 
+# Датасет организаторов и производные от него. Лежат в data/ и не коммитятся.
+SIGNALS_XLSX = DATA / "100_слабых_технологических_сигналов_сентябрь_2026.xlsx"
+POSITIVE_TERMS = DATA / "positive_terms.csv"
+LABELED_SET = DATA / "labeled_set.csv"
+
+
 def main() -> None:
-    labeled = pd.read_csv(DATA / "labeled_set.csv")
+    # Выборку пересобираем, а не читаем готовую. Раньше здесь стоял pd.read_csv готового
+    # labeled_set.csv, а build_labeled_set не вызывался ниоткуда: правка negatives.csv
+    # молча ни на что не влияла. 22.09 на это попались — добавили 74 примера и получили
+    # метрики до четвёртого знака те же самые.
+    labeled = build_labeled_set(SIGNALS_XLSX, POSITIVE_TERMS)
+    labeled.to_csv(LABELED_SET, index=False, encoding="utf-8")  # отчёт читает этот же файл
     X, y, kept = build_matrix(labeled, load_term_stats())
     oof = cross_validate(X, y)
     m = metrics(y, oof)
