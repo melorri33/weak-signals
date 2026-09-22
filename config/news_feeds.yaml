@@ -28,3 +28,6 @@ search_feeds:
   - name: bing_news
     url: "https://www.bing.com/news/search?q=%22{query}%22&format=RSS"
     unwrap: bing
+    # Страницы выдачи (параметр first). Первая страница — около девяти записей с семи сайтов,
+    # а источники датасета разбросаны по двумстам сайтам. Глубже листается: см. news._from_feed.
+    pages: [1, 11, 21, 41]

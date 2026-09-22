@@ -121,21 +121,41 @@ def parse_feed(xml: str, phrase: str, unwrap: str | None = None) -> list[Documen
 async def _from_feed(
     feed: dict[str, str], phrase: str, settings: Settings, client: httpx.AsyncClient
 ) -> list[Document]:
+    """Документы одной ленты по фразе. Если у ленты заданы страницы (pages), листаем их.
+
+    Зачем листать. Разбор 285 ссылок датасета организаторов: они ведут на 206 разных сайтов,
+    176 из них встречаются ровно один раз, и 81% ссылок достижимы только общим поиском, а не
+    поиском внутри конкретного издания. Общий поиск у нас — новостная лента Bing, и первая её
+    страница даёт около девяти записей с семи сайтов. Замер 22.09 по замороженным фразам трёх
+    областей: страницы со 2-й по 5-ю приносят 259-468 новых документов со 147-244 сайтов
+    и добавляют технологии датасета, которых в собранном не было.
+
+    Отказ посреди листания не выбрасывает уже полученное: страницы, пришедшие до 429,
+    остаются в выдаче.
+    """
     name = feed["name"]
-    if name in _exhausted:
-        return []
+    pages = feed.get("pages") or [None]
+    docs: dict[str, Document] = {}
     limiter = _limiters.setdefault(name, RateLimiter(interval_s=FEED_PAUSE_S))
-    await limiter.wait()
-    if name in _exhausted:  # исчерпалась, пока мы ждали очереди
-        return []
-    url = feed["url"].format(query=phrase.replace(" ", "+"))
-    r = await client.get(url, timeout=settings.source_timeout_s, follow_redirects=True)
-    if r.status_code == httpx.codes.TOO_MANY_REQUESTS:
-        _exhausted.add(name)
-        log.info("Лента %s просит не частить (429) — до конца прогона к ней не обращаемся", name)
-        return []
-    r.raise_for_status()
-    return parse_feed(r.text, phrase, feed.get("unwrap"))[:PER_FEED_LIMIT]
+    base = feed["url"].format(query=phrase.replace(" ", "+"))
+    for first in pages:
+        if name in _exhausted:
+            break
+        await limiter.wait()
+        if name in _exhausted:  # исчерпалась, пока мы ждали очереди
+            break
+        url = base if first is None else f"{base}&first={first}"
+        r = await client.get(url, timeout=settings.source_timeout_s, follow_redirects=True)
+        if r.status_code == httpx.codes.TOO_MANY_REQUESTS:
+            _exhausted.add(name)
+            log.info("Лента %s просит не частить (429) — до конца прогона к ней не обращаемся", name)
+            break
+        r.raise_for_status()
+        fresh = [d for d in parse_feed(r.text, phrase, feed.get("unwrap"))[:PER_FEED_LIMIT] if d.id not in docs]
+        if not fresh:
+            break  # дальше лента отдаёт то же самое — листать некуда
+        docs.update((d.id, d) for d in fresh)
+    return list(docs.values())
 
 
 async def search(phrase: str, settings: Settings, client: httpx.AsyncClient, errors: list[str]) -> list[Document]:
