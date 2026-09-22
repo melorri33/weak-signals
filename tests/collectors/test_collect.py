@@ -24,13 +24,9 @@ collect_module = importlib.import_module("src.collectors.collect")
 def _no_news(monkeypatch: pytest.MonkeyPatch):
     """По умолчанию новостей нет — тесты оркестрации не должны ходить в ленты изданий.
 
-    Тест, где новости нужны, подменяет news.search своей заглушкой.
+    Тест, где новости нужны, подменяет news.feeds и news.search_feed своими заглушками.
     """
-
-    async def nothing(phrase, settings, client, errors):
-        return []
-
-    monkeypatch.setattr(news, "search", nothing)
+    monkeypatch.setattr(news, "feeds", lambda: [])
 
 
 def _doc(doc_id: str, title: str | None = None) -> Document:
@@ -62,8 +58,10 @@ async def test_collect_combines_both_sources(monkeypatch: pytest.MonkeyPatch):
 async def test_news_come_first_when_limit_cuts_the_list(monkeypatch: pytest.MonkeyPatch):
     """71% источников датасета — техноновости: при обрезке по limit наука не должна их вытеснять."""
 
-    async def fake_news(phrase, settings, client, errors):
-        return [_doc(f"techcrunch.com:{i}") for i in range(5)]
+    async def fake_news(feed, phrase, settings, client, errors, sink=None):
+        found = [_doc(f"techcrunch.com:{i}") for i in range(5)]
+        sink.extend(found)
+        return found
 
     async def fake_openalex(phrase, settings, client, limit=200):
         return [_doc(f"openalex:{i}") for i in range(50)]
@@ -71,7 +69,8 @@ async def test_news_come_first_when_limit_cuts_the_list(monkeypatch: pytest.Monk
     async def fake_arxiv(phrase, settings, client, limit=50):
         return []
 
-    monkeypatch.setattr(news, "search", fake_news)
+    monkeypatch.setattr(news, "feeds", lambda: [{"name": "techcrunch"}])
+    monkeypatch.setattr(news, "search_feed", fake_news)
     monkeypatch.setattr(openalex, "search", fake_openalex)
     monkeypatch.setattr(arxiv, "search", fake_arxiv)
 
@@ -163,8 +162,10 @@ async def test_slow_source_does_not_take_the_others_with_it(monkeypatch: pytest.
     """arXiv просит паузу 3 с между запросами: на живом прогоне он один съедал весь бюджет,
     и вместе с ним отменялись уже собранные новости — получался ноль документов при живых лентах."""
 
-    async def fake_news(phrase, settings, client, errors):
-        return [_doc(f"techcrunch.com:{phrase}")]
+    async def fake_news(feed, phrase, settings, client, errors, sink=None):
+        found = [_doc(f"techcrunch.com:{phrase}")]
+        sink.extend(found)
+        return found
 
     async def slow_arxiv(phrase, settings, client, limit=50):
         await asyncio.sleep(10)
@@ -173,7 +174,8 @@ async def test_slow_source_does_not_take_the_others_with_it(monkeypatch: pytest.
     async def fake_openalex(phrase, settings, client, limit=200):
         return [_doc(f"openalex:{phrase}")]
 
-    monkeypatch.setattr(news, "search", fake_news)
+    monkeypatch.setattr(news, "feeds", lambda: [{"name": "techcrunch"}])
+    monkeypatch.setattr(news, "search_feed", fake_news)
     monkeypatch.setattr(arxiv, "search", slow_arxiv)
     monkeypatch.setattr(openalex, "search", fake_openalex)
     monkeypatch.setattr(collect_module, "get_settings", lambda: Settings(collect_budget_s=0.3))
@@ -183,3 +185,31 @@ async def test_slow_source_does_not_take_the_others_with_it(monkeypatch: pytest.
     ids = {d.id for d in docs}
     assert len(ids) == 4  # новости и OpenAlex по обеим фразам
     assert not any(d.id.startswith("arxiv:") for d in docs)
+
+
+async def test_budget_keeps_news_pages_received_before_cancel(monkeypatch: pytest.MonkeyPatch):
+    """Бюджет кончился посреди листания — первая страница остаётся, вторая пропадает.
+
+    Раньше новости были одной задачей на фразу по всем лентам: отмена по бюджету уносила
+    и то, что уже пришло. С листанием Bing это стало реальной потерей: четыре запроса на фразу
+    через общую очередь могут не успеть, а с ними пропали бы ответы остальных лент.
+    """
+
+    async def paging(feed, phrase, settings, client, errors, sink=None):
+        sink.append(_doc("bing.com:page-1"))
+        await asyncio.sleep(1.0)  # вторая страница не успевает
+        sink.append(_doc("bing.com:page-2"))
+        return list(sink)
+
+    async def fast(phrase, settings, client, limit=200):
+        return []
+
+    monkeypatch.setattr(news, "feeds", lambda: [{"name": "bing_news"}])
+    monkeypatch.setattr(news, "search_feed", paging)
+    monkeypatch.setattr(openalex, "search", fast)
+    monkeypatch.setattr(arxiv, "search", fast)
+    monkeypatch.setattr(collect_module, "get_settings", lambda: Settings(collect_budget_s=0.1))
+
+    docs = await collect_module.collect(["quantum sensing"])
+
+    assert [d.id for d in docs] == ["bing.com:page-1"]

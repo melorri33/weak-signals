@@ -119,7 +119,11 @@ def parse_feed(xml: str, phrase: str, unwrap: str | None = None) -> list[Documen
 
 
 async def _from_feed(
-    feed: dict[str, str], phrase: str, settings: Settings, client: httpx.AsyncClient
+    feed: dict[str, str],
+    phrase: str,
+    settings: Settings,
+    client: httpx.AsyncClient,
+    sink: list[Document] | None = None,
 ) -> list[Document]:
     """Документы одной ленты по фразе. Если у ленты заданы страницы (pages), листаем их.
 
@@ -131,7 +135,8 @@ async def _from_feed(
     и добавляют технологии датасета, которых в собранном не было.
 
     Отказ посреди листания не выбрасывает уже полученное: страницы, пришедшие до 429,
-    остаются в выдаче.
+    остаются в выдаче. То же при отмене по бюджету сбора: каждая страница сразу кладётся
+    в sink, и вызывающий заберёт её, даже если задачу отменили на следующей.
     """
     name = feed["name"]
     pages = feed.get("pages") or [None]
@@ -155,19 +160,30 @@ async def _from_feed(
         if not fresh:
             break  # дальше лента отдаёт то же самое — листать некуда
         docs.update((d.id, d) for d in fresh)
+        if sink is not None:
+            sink.extend(fresh)
     return list(docs.values())
 
 
-async def search(phrase: str, settings: Settings, client: httpx.AsyncClient, errors: list[str]) -> list[Document]:
-    """Новости по фразе из всех лент сразу; упавшая лента не мешает остальным.
+async def search_feed(
+    feed: dict[str, str],
+    phrase: str,
+    settings: Settings,
+    client: httpx.AsyncClient,
+    errors: list[str],
+    sink: list[Document] | None = None,
+) -> list[Document]:
+    """Новости по фразе из одной ленты. Падение ленты — в errors, не наружу.
 
     Русские фразы в англоязычные ленты не отправляем: они ничего не находят, а лимит запросов тратят.
     """
     if _CYRILLIC_RE.search(phrase):
         return []
-    calls = [
-        safe_call(f"news:{feed['name']}", lambda f=feed: _from_feed(f, phrase, settings, client), errors)
-        for feed in feeds()
-    ]
-    results = await asyncio.gather(*calls)
-    return [doc for group in results if group for doc in group]
+    found = await safe_call(f"news:{feed['name']}", lambda: _from_feed(feed, phrase, settings, client, sink), errors)
+    return found or []
+
+
+async def search(phrase: str, settings: Settings, client: httpx.AsyncClient, errors: list[str]) -> list[Document]:
+    """Новости по фразе из всех лент сразу; упавшая лента не мешает остальным."""
+    results = await asyncio.gather(*(search_feed(f, phrase, settings, client, errors) for f in feeds()))
+    return [doc for group in results for doc in group]
