@@ -238,3 +238,28 @@ def test_order_mixes_news_and_science():
         "5 технологий датасета из 12 при чередовании один к одному, 4 при двух новостях на статью "
         "и 2 при строгой очереди «сначала новости»"
     )
+
+
+def test_every_plural_generic_head_has_its_singular():
+    """Для каждого слова во множественном числе должно быть единственное.
+
+    Именно такого пропуска стоила ошибка: «platforms» в списке было, «platform» не было,
+    и записи вроде «… platform» проходили фильтр и занимали места в топ-15. Замер 21.09
+    по двум прогонам: 5 и 8 таких записей из 90 мест выдачи.
+
+    Обратную сторону не проверяем: у «processing» и «infrastructure» естественного
+    множественного числа нет, и требовать его бессмысленно.
+    """
+    from src.pipeline.candidates import _TOO_GENERIC_HEAD
+
+    missing = []
+    for word in sorted(_TOO_GENERIC_HEAD):
+        if word.endswith("ies"):
+            singular = f"{word[:-3]}y"
+        elif word.endswith("s") and not word.endswith("ss"):
+            singular = word[:-1]
+        else:
+            continue
+        if singular not in _TOO_GENERIC_HEAD:
+            missing.append(f"«{word}» есть, «{singular}» нет")
+    assert not missing, "в списке общих слов не хватает форм: " + "; ".join(missing)
