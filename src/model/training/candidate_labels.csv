@@ -1,0 +1,854 @@
+name,domain,kind
+high bandwidth flash,Edge,borderline
+ai distillation,Edge,mature
+llm quantization,Edge,mature
+qualcomm npu,Edge,product
+open-weight ai model,Edge,too_broad
+ai knowledge distillation,Edge,mature
+anthropic claude model,Edge,product
+ai kill switch,Edge,off_topic
+lossless ai model compression,Edge,weak_signal
+neuromorphic ai models,Edge,weak_signal
+frontier ai models,Edge,too_broad
+neuromorphic ai model,Edge,weak_signal
+ai model optimization,Edge,too_broad
+edge ai inference accelerator,Edge,too_broad
+ai inference acceleration,Edge,too_broad
+tinyml hardware accelerator,Edge,borderline
+agentic large model,Edge,too_broad
+domain-specific security analysis,Edge,not_a_technology
+binary-quantized neural networks,Edge,mature
+tiny llm,Edge,borderline
+adaptive multimodal transformer,Edge,too_broad
+tabular foundation model,Edge,off_topic
+self-supervised speech model,Edge,mature
+self-supervised speech models,Edge,mature
+on-device ai inference,Edge,too_broad
+smart medical beds,Edge,off_topic
+printed circuit board defect detection,Edge,mature
+radar automatic target recognition,Edge,mature
+lossless neural network weight compression,Edge,weak_signal
+ai-enabled wearable sensors,Edge,too_broad
+ai-powered tech,Edge,not_a_technology
+ai model distillation,Edge,mature
+ai-enabled wireless sensor networks,Edge,too_broad
+8-bit quantized neural network,Edge,mature
+edge ai chip,Edge,too_broad
+intelligent hmi,Edge,too_broad
+semiconductor investment,Edge,not_a_technology
+moonshot ai,Edge,product
+on-device model adaptation,Edge,borderline
+8-bit quantized neural networks,Edge,mature
+cybersecurity ai model,Edge,too_broad
+quantized neural networks,Edge,mature
+ai optimization engine,Edge,too_broad
+real-time driver behavior recognition,Edge,mature
+straight-through estimator,Edge,mature
+driver behavior recognition,Edge,mature
+intrinsic core,Edge,not_a_technology
+intelligent visual perception,Edge,too_broad
+mlperf,Edge,product
+ai safety rules,Edge,not_a_technology
+film cooling effectiveness prediction,Edge,off_topic
+quantization security,Edge,borderline
+tinybert model,Edge,mature
+local stability analysis,Edge,not_a_technology
+radiation-induced bit-flip,Edge,off_topic
+bit ai,Edge,not_a_technology
+quantized neural network,Edge,mature
+on-device training,Edge,borderline
+high-performance computing architecture,Edge,too_broad
+semiconductor value chain,Edge,not_a_technology
+low-power core,Edge,too_broad
+liquid metal patterning,Edge,off_topic
+siri ai,Edge,product
+frontier ai,Edge,too_broad
+wearable navigation devices,Edge,too_broad
+rtl generation,Edge,off_topic
+ultra-low-power mcu,Edge,mature
+edge ai hardware,Edge,too_broad
+smartphone photography,Edge,mature
+full-frame sensor,Edge,mature
+input-quantized neural network,Edge,mature
+edge-ai optimization,Edge,too_broad
+generative ai robot,Edge,too_broad
+network traffic attack classification,Edge,mature
+speech recognition model,Edge,mature
+minimally invasive surgical robot,Edge,off_topic
+self-distillation training,Edge,mature
+voice command integration,Edge,not_a_technology
+edge device inference,Edge,too_broad
+embedded gui,Edge,mature
+gaussian smoothing,Edge,mature
+edge ai enabled smart sensors,Edge,too_broad
+local llm,Edge,too_broad
+ai-enabled medical sensors,Edge,too_broad
+ai-powered payment gateway,Edge,off_topic
+smart prosthetic,Edge,off_topic
+gzip compression,Edge,mature
+pathogen risk stratification,Edge,off_topic
+mixture of experts architecture,Edge,mature
+energy-efficient wireless sensor network,Edge,mature
+ai-assisted electrochemical sensor,Edge,off_topic
+fault injection profiler,Edge,not_a_technology
+lightweight transformer model,Edge,too_broad
+smart prosthetics,Edge,off_topic
+lightweight transformer models,Edge,too_broad
+ai-assisted electrochemical sensors,Edge,off_topic
+sers sensor,Edge,off_topic
+nlp in psychology,Edge,off_topic
+neural processing units,Edge,mature
+neuromorphic hardware,Edge,weak_signal
+model parallelism,Edge,mature
+model distillation,Edge,mature
+on-device speech recognition,Edge,mature
+model context protocol,Edge,off_topic
+on-device voice interface,Edge,too_broad
+high resolution range profile,Edge,off_topic
+on-device inference,Edge,too_broad
+thermal interface materials,Edge,mature
+lightweight transformer,Edge,too_broad
+adaptive fine-tuning,Edge,too_broad
+lightweight transformers,Edge,too_broad
+chipstack ai super agent,Edge,product
+gzip language model,Edge,not_a_technology
+on-device fault detection,Edge,too_broad
+on-device intelligence,Edge,too_broad
+ai inferencing,Edge,too_broad
+multimodal sensor fusion,Edge,mature
+edge ai power management,Edge,too_broad
+edge ai software,Edge,too_broad
+terafab chip factory,Edge,product
+edge ai testing,Edge,too_broad
+lighttok sensor chip,Edge,product
+rectified linear unit,Edge,mature
+ai-powered wearables,Edge,too_broad
+lighttok chip,Edge,product
+on-device image preprocessing chip,Edge,borderline
+open-weight cybersecurity model,Edge,too_broad
+llm relay servers,Edge,not_a_technology
+training-and-inference ai chip,Edge,too_broad
+multi-gigabit ethernet phy,Edge,mature
+on-premises ai security,Edge,too_broad
+rtl generation agent,Edge,off_topic
+abr sdk,Edge,product
+early ppa optimization agent,Edge,off_topic
+smart medical bed with embedded sensors,Edge,off_topic
+programmable ai acceleration,Edge,too_broad
+semiconductor investment wave,Edge,not_a_technology
+real-time on-device voice interface,Edge,too_broad
+self-learning ai acceleration,Edge,borderline
+ai slowdown trade,Edge,not_a_technology
+npu gpu cpu pipeline,Edge,too_broad
+2-bit llm quantization,Edge,weak_signal
+ultra-low power ai voice processor,Edge,borderline
+axelera europa ai accelerator,Edge,product
+causal encoder-decoder architecture,Edge,mature
+virtual sensor,Edge,mature
+6nm chip,Edge,mature
+joint entropy floor compression,Edge,not_a_technology
+membrain sage neuromorphic hardware ip,Edge,product
+trimetallic nanozyme sensor,Edge,off_topic
+high-intelligence ai model,Edge,too_broad
+rugged ai gpgpu board,Edge,mature
+ai-powered wearable navigation device,Edge,too_broad
+hunmin vlm,Edge,product
+sixth sense,Edge,not_a_technology
+privacy-preserving continuous smartphone sensing,Edge,borderline
+screenspot pro leaderboard,Edge,product
+smart data,Edge,not_a_technology
+ppasyl-xlNet model,Edge,product
+neural processing unit,Edge,mature
+bitnet,Edge,weak_signal
+on-demand attention,Edge,not_a_technology
+phishing url detection,Edge,off_topic
+ai accelerator,Edge,too_broad
+millimeter-wave radar,Edge,mature
+digital power,Edge,too_broad
+tinyml,Edge,borderline
+wearable sensor interface,Edge,too_broad
+ai utilization,Edge,not_a_technology
+risc-v architecture,Edge,mature
+on-device inference accelerator,Edge,too_broad
+real-time patient monitoring,Edge,off_topic
+ai and multi-sensor fusion,Edge,too_broad
+ai agent safety,Защита ИИ,too_broad
+ai model routing,Защита ИИ,off_topic
+ai safety standards,Защита ИИ,not_a_technology
+governed ai agents,Защита ИИ,weak_signal
+ai incident response,Защита ИИ,not_a_technology
+ai-driven execution,Защита ИИ,not_a_technology
+distributed proof theory,Защита ИИ,off_topic
+forward-deployed engineers,Защита ИИ,not_a_technology
+global ai safety index,Защита ИИ,not_a_technology
+quantum-inspired cryptographic protocols,Защита ИИ,off_topic
+hyperdimensional symbolic computation,Защита ИИ,off_topic
+nvidia confidential computing,Защита ИИ,product
+over-the-air federated learning,Защита ИИ,off_topic
+information-theoretic compression,Защита ИИ,off_topic
+information-theoretic robustness quantification,Защита ИИ,borderline
+AI-assisted editing,Защита ИИ,off_topic
+attribution decay,Защита ИИ,not_a_technology
+qubo optimization,Защита ИИ,off_topic
+synthid-text,Защита ИИ,product
+task-aware pruning,Защита ИИ,off_topic
+ai watermark removal,Защита ИИ,borderline
+quantum network secure multi-party computation,Защита ИИ,off_topic
+quantum security protocol,Защита ИИ,off_topic
+destination ai,Защита ИИ,not_a_technology
+secure multi-party computation protocol,Защита ИИ,mature
+byzantine resilience,Защита ИИ,mature
+low-rank compression,Защита ИИ,off_topic
+watermarks in the sand,Защита ИИ,not_a_technology
+ctrlregen+,Защита ИИ,product
+formal modeling and verification,Защита ИИ,mature
+watermarkattacker,Защита ИИ,product
+ai kill switch,Защита ИИ,weak_signal
+AI content transparency,Защита ИИ,too_broad
+progressive knowledge distillation,Защита ИИ,off_topic
+AI-assisted creative production,Защита ИИ,off_topic
+ai-first enterprises,Защита ИИ,not_a_technology
+data and ai governance,Защита ИИ,too_broad
+generative-ai watermark removal,Защита ИИ,borderline
+secure optical communications,Защита ИИ,off_topic
+robot relations,Защита ИИ,not_a_technology
+unmarker,Защита ИИ,product
+machine-readable marking,Защита ИИ,borderline
+outcome-based contracts,Защита ИИ,not_a_technology
+risk assessment automation,Защита ИИ,too_broad
+blockchain-based secure multi-party computation,Защита ИИ,off_topic
+structured neural network pruning,Защита ИИ,off_topic
+ai attribution,Защита ИИ,borderline
+secure federated learning,Защита ИИ,mature
+generative-ai watermark,Защита ИИ,weak_signal
+quantum-secure multi-party computation,Защита ИИ,off_topic
+vision transformer architecture,Защита ИИ,off_topic
+adaptive neural network pruning,Защита ИИ,off_topic
+decentralized deep learning,Защита ИИ,off_topic
+neural network compression,Защита ИИ,off_topic
+behavioral security,Защита ИИ,too_broad
+homomorphic-encrypted inference,Защита ИИ,borderline
+secure customer onboarding,Защита ИИ,off_topic
+ai assurance,Защита ИИ,too_broad
+data enclave,Защита ИИ,product
+bias mitigation techniques,Защита ИИ,mature
+privacy-preserving inference,Защита ИИ,borderline
+boundary leakage,Защита ИИ,not_a_technology
+secure computation protocol,Защита ИИ,mature
+byzantine fault tolerance,Защита ИИ,mature
+full lifecycle protection,Защита ИИ,not_a_technology
+interactive theorem proving,Защита ИИ,off_topic
+llm-generated content,Защита ИИ,not_a_technology
+privacy-preserving localization,Защита ИИ,off_topic
+risk appetite,Защита ИИ,not_a_technology
+image attribution,Защита ИИ,borderline
+sdn-orchestrated architecture,Защита ИИ,off_topic
+ai watermark,Защита ИИ,weak_signal
+quantum-inspired computation,Защита ИИ,off_topic
+ai watermarking,Защита ИИ,weak_signal
+decentralized machine learning,Защита ИИ,off_topic
+information-theoretic pruning,Защита ИИ,off_topic
+human conception ledger,Защита ИИ,not_a_technology
+hyperdimensional computing,Защита ИИ,off_topic
+agentic b2b attribution,Защита ИИ,not_a_technology
+decentralized federated learning,Защита ИИ,off_topic
+secure ai architectures,Защита ИИ,too_broad
+quantum chip,Защита ИИ,off_topic
+reinforcement learning pruning,Защита ИИ,off_topic
+trusted context layer,Защита ИИ,borderline
+artificial intelligence governance,Защита ИИ,too_broad
+enterprise identity controls,Защита ИИ,mature
+ai agent governance layer,Защита ИИ,weak_signal
+provenance metadata,Защита ИИ,borderline
+runtime monitoring,Защита ИИ,mature
+ai explainability,Защита ИИ,mature
+ai-integrated malware,Защита ИИ,borderline
+mutual information maximization,Защита ИИ,off_topic
+ai compliance workflow,Защита ИИ,too_broad
+digital provenance,Защита ИИ,too_broad
+synthid-text watermarking,Защита ИИ,product
+on-premises ai cybersecurity model,Защита ИИ,too_broad
+post-quantum security,Защита ИИ,off_topic
+quantum secure communication,Защита ИИ,off_topic
+bank-grade governance,Защита ИИ,not_a_technology
+boundary leakage detector,Защита ИИ,not_a_technology
+quantum crypto networks,Защита ИИ,off_topic
+imperceptible text watermark,Защита ИИ,borderline
+quantum cryptography network simulator,Защита ИИ,off_topic
+real-time anomaly detection,Защита ИИ,mature
+governed account data,Защита ИИ,not_a_technology
+probabilistic algorithm,Защита ИИ,not_a_technology
+llm workflows,Защита ИИ,too_broad
+spatial-temporal analysis,Защита ИИ,not_a_technology
+ai security,Защита ИИ,too_broad
+non-invasive respiratory support,Защита ИИ,off_topic
+task-aware neural network pruning,Защита ИИ,off_topic
+ai risk appetite,Защита ИИ,not_a_technology
+superconducting nanowire single-photon detector,Защита ИИ,off_topic
+model distillation,Защита ИИ,off_topic
+stellar ai network,Защита ИИ,product
+data poisoning attack,Защита ИИ,mature
+self-operating ai security network,Защита ИИ,too_broad
+cellcnn,Защита ИИ,product
+symbolic execution,Защита ИИ,mature
+algorithmic information theory,Защита ИИ,off_topic
+healthcare data security,Защита ИИ,off_topic
+on-device inference,Защита ИИ,off_topic
+ai-generated images,Защита ИИ,not_a_technology
+trusted ai,Защита ИИ,too_broad
+secure aggregation,Защита ИИ,mature
+regret minimization,Защита ИИ,off_topic
+neural network pruning,Защита ИИ,off_topic
+tokenomics,Защита ИИ,off_topic
+invisible text watermarking,Защита ИИ,borderline
+stealth ai model,Защита ИИ,not_a_technology
+quantum-safe cryptographic management,Защита ИИ,off_topic
+gaussian-circulant precoding,Защита ИИ,off_topic
+confidential ai runtime,Защита ИИ,weak_signal
+hybrid qubo optimization,Защита ИИ,off_topic
+llm guardrail adherence,Защита ИИ,borderline
+nfpa detector,Защита ИИ,not_a_technology
+machine participation detection,Защита ИИ,borderline
+licensed data training,Защита ИИ,not_a_technology
+model usage tracing,Защита ИИ,borderline
+secure cross-industry data collaboration,Защита ИИ,too_broad
+algorithmic fairness,Защита ИИ,mature
+AI-assisted writing,Защита ИИ,off_topic
+provenance tracking,Защита ИИ,too_broad
+secure multi-party computation,Защита ИИ,mature
+generative ai model,Защита ИИ,too_broad
+enterprise ai,Защита ИИ,too_broad
+decentralized identity,Защита ИИ,off_topic
+on-device inference accelerator,Защита ИИ,off_topic
+nfpa,Защита ИИ,not_a_technology
+slurm,Защита ИИ,product
+gemini ai assistant,Индустриальный ИИ,product
+headless automation,Индустриальный ИИ,too_broad
+agentic coding workflow,Индустриальный ИИ,off_topic
+ai agent security,Индустриальный ИИ,off_topic
+ai quality inspection,Индустриальный ИИ,mature
+gru-based machine learning,Индустриальный ИИ,mature
+open-source ai agent,Индустриальный ИИ,too_broad
+gru-based machine learning model,Индустриальный ИИ,mature
+gru-based machine learning models,Индустриальный ИИ,mature
+graph-augmented retrieval,Индустриальный ИИ,borderline
+llm-assisted modeling,Индустриальный ИИ,too_broad
+llm-enhanced digital twin,Индустриальный ИИ,weak_signal
+structural-semantic fusion,Индустриальный ИИ,too_broad
+sovereign ai strategy,Индустриальный ИИ,not_a_technology
+structural representation learning,Индустриальный ИИ,too_broad
+ai-driven maintenance,Индустриальный ИИ,mature
+multi-modal entity alignment,Индустриальный ИИ,too_broad
+contact center ai,Индустриальный ИИ,off_topic
+deep learning-based prognostic model,Индустриальный ИИ,mature
+knowledge graph link prediction,Индустриальный ИИ,mature
+bot protection,Индустриальный ИИ,off_topic
+contextual data fusion,Индустриальный ИИ,too_broad
+on-device ai inference,Индустриальный ИИ,off_topic
+multi-task machine learning,Индустриальный ИИ,mature
+neuromorphic ai,Индустриальный ИИ,off_topic
+generative engine optimization,Индустриальный ИИ,off_topic
+structured preprocessing pipelines,Индустриальный ИИ,not_a_technology
+ai-driven workforce management,Индустриальный ИИ,not_a_technology
+deep learning-based prognostic models,Индустриальный ИИ,mature
+intelligent manufacturing predictive maintenance,Индустриальный ИИ,mature
+dem-based model,Индустриальный ИИ,not_a_technology
+ai chip market,Индустриальный ИИ,not_a_technology
+ai-driven quality inspection,Индустриальный ИИ,mature
+few-shot entity recognition,Индустриальный ИИ,too_broad
+edge ai chip,Индустриальный ИИ,off_topic
+custom ai agent,Индустриальный ИИ,too_broad
+explanation-based ai,Индустриальный ИИ,mature
+full-stack cloud,Индустриальный ИИ,not_a_technology
+autonomous artificial intelligence agent,Индустриальный ИИ,too_broad
+iot sensor data analysis,Индустриальный ИИ,mature
+industrial knowledge graph,Индустриальный ИИ,borderline
+industrial knowledge graphs,Индустриальный ИИ,borderline
+multi-hop knowledge graph completion,Индустриальный ИИ,mature
+graphrag,Индустриальный ИИ,borderline
+synchrophasor data,Индустриальный ИИ,off_topic
+ai-driven intelligence,Индустриальный ИИ,not_a_technology
+digital twin-based quality inspection,Индустриальный ИИ,mature
+edge data centre,Индустриальный ИИ,mature
+knowledge graph reasoning,Индустриальный ИИ,mature
+recycled carbon fibre,Индустриальный ИИ,off_topic
+runtime enforcement,Индустриальный ИИ,off_topic
+ai-talent cultivation,Индустриальный ИИ,not_a_technology
+campaign governance,Индустриальный ИИ,not_a_technology
+mww zeolites,Индустриальный ИИ,off_topic
+ai-based investigation,Индустриальный ИИ,not_a_technology
+dark factory,Индустриальный ИИ,borderline
+blueprint alliance,Индустриальный ИИ,not_a_technology
+event-oriented database,Индустриальный ИИ,not_a_technology
+high-voltage equipment maintenance,Индустриальный ИИ,mature
+light-driven photocatalytic hydrogen production,Индустриальный ИИ,off_topic
+underwater data centre,Индустриальный ИИ,off_topic
+ai-powered threat detection,Индустриальный ИИ,off_topic
+waste-to-energy conversion,Индустриальный ИИ,off_topic
+agentic enterprise,Индустриальный ИИ,not_a_technology
+predictive maintenance workflow,Индустриальный ИИ,mature
+ai networks,Индустриальный ИИ,not_a_technology
+remaining useful life estimation,Индустриальный ИИ,mature
+agent controls,Индустриальный ИИ,too_broad
+on-device inference,Индустриальный ИИ,off_topic
+open source robotics software,Индустриальный ИИ,mature
+ai agent runtime gateway,Индустриальный ИИ,off_topic
+on-device intelligence,Индустриальный ИИ,off_topic
+semantic translation,Индустриальный ИИ,not_a_technology
+ai inferencing,Индустриальный ИИ,off_topic
+digital twin-based manufacturing control,Индустриальный ИИ,mature
+predictive maintenance models,Индустриальный ИИ,mature
+nvidia jetson orin,Индустриальный ИИ,product
+ai chip cluster,Индустриальный ИИ,off_topic
+edge ai evaluation card,Индустриальный ИИ,not_a_technology
+edge-cloud architecture,Индустриальный ИИ,off_topic
+artificial intelligence agents,Индустриальный ИИ,too_broad
+self-learning pci express card,Индустриальный ИИ,product
+semiconductor manufacturing analytics,Индустриальный ИИ,mature
+contextual ai,Индустриальный ИИ,too_broad
+strands harness,Индустриальный ИИ,product
+thermoplastic composite hydrogen tank,Индустриальный ИИ,off_topic
+ai training data,Индустриальный ИИ,not_a_technology
+on-device inference accelerator,Индустриальный ИИ,off_topic
+wear prediction,Индустриальный ИИ,mature
+autonomous model lifecycle management,Индустриальный ИИ,too_broad
+edge ai testing,Индустриальный ИИ,off_topic
+generative ai rule enforcement,Индустриальный ИИ,off_topic
+ai-powered feeder,Индустриальный ИИ,not_a_technology
+cost-sensitive maintenance prioritization,Индустриальный ИИ,mature
+biomanufacturing equipment maintenance,Индустриальный ИИ,mature
+control panel manufacturing process management,Индустриальный ИИ,not_a_technology
+ai ad fraud detection,Индустриальный ИИ,off_topic
+ai-driven rehabilitation assessment,Индустриальный ИИ,off_topic
+ai-powered biology research,Индустриальный ИИ,off_topic
+unified industrial cybersecurity,Индустриальный ИИ,off_topic
+renewable energy linked intelligent compute,Индустриальный ИИ,off_topic
+serverless trial,Индустриальный ИИ,not_a_technology
+modular solar-powered data center,Индустриальный ИИ,off_topic
+aging infrastructure monitoring,Индустриальный ИИ,mature
+dual-armed semi-humanoid robot,Индустриальный ИИ,borderline
+ai-enabled interactive content,Индустриальный ИИ,off_topic
+neural processing unit,Индустриальный ИИ,off_topic
+process control to industrial ai,Индустриальный ИИ,not_a_technology
+shap explainability,Индустриальный ИИ,mature
+ai-driven predictive maintenance,Индустриальный ИИ,mature
+ai-driven analytics,Индустриальный ИИ,too_broad
+ai for industry,Индустриальный ИИ,too_broad
+asset administration shell,Индустриальный ИИ,mature
+multi-agent ai,Индустриальный ИИ,too_broad
+graph rag,Индустриальный ИИ,borderline
+manufacturing automation,Индустриальный ИИ,too_broad
+ai inference chip,Инфраструктура ИИ,too_broad
+ai inference chips,Инфраструктура ИИ,too_broad
+phase-change material based programmable mode converter,Инфраструктура ИИ,borderline
+kv cache communication,Инфраструктура ИИ,weak_signal
+orbital data centers,Инфраструктура ИИ,weak_signal
+phase-change material-based programmable mode converter,Инфраструктура ИИ,borderline
+adaptive ai task partitioning,Инфраструктура ИИ,mature
+context-aware multimodal ai,Инфраструктура ИИ,too_broad
+recurrent depth,Инфраструктура ИИ,off_topic
+ai workflow orchestration,Инфраструктура ИИ,too_broad
+distributed ai inference,Инфраструктура ИИ,too_broad
+agentic large model,Инфраструктура ИИ,too_broad
+bernstein optimization,Инфраструктура ИИ,not_a_technology
+edge ai inference accelerator,Инфраструктура ИИ,too_broad
+nonlinear photonic neuromorphic chip,Инфраструктура ИИ,weak_signal
+generative ai inference,Инфраструктура ИИ,too_broad
+real-time ai inference,Инфраструктура ИИ,too_broad
+ai chip architecture,Инфраструктура ИИ,too_broad
+low-latency ai inference,Инфраструктура ИИ,too_broad
+large-scale llm inference,Инфраструктура ИИ,too_broad
+photonic neuromorphic chip,Инфраструктура ИИ,weak_signal
+blackwell architecture,Инфраструктура ИИ,product
+direct-to-chip liquid cooling,Инфраструктура ИИ,borderline
+hardware-accelerated edge ai,Инфраструктура ИИ,too_broad
+nanoscale semiconductor device,Инфраструктура ИИ,too_broad
+on-device ai inference,Инфраструктура ИИ,too_broad
+edge-based ai inference,Инфраструктура ИИ,too_broad
+nanoscale semiconductor devices,Инфраструктура ИИ,too_broad
+ai inference pipeline,Инфраструктура ИИ,too_broad
+multi-level ensemble learning,Инфраструктура ИИ,too_broad
+spiking reinforcement learning,Инфраструктура ИИ,borderline
+latency-aware edge-cloud collaboration,Инфраструктура ИИ,too_broad
+self-rectifying memristor crossbar array,Инфраструктура ИИ,weak_signal
+local llm verification,Инфраструктура ИИ,not_a_technology
+von neumann computing,Инфраструктура ИИ,mature
+conductance update linearity,Инфраструктура ИИ,not_a_technology
+google tpu,Инфраструктура ИИ,product
+power-efficient compute unit,Инфраструктура ИИ,too_broad
+bcm learning rule,Инфраструктура ИИ,mature
+coolant distribution unit,Инфраструктура ИИ,mature
+ai chip market,Инфраструктура ИИ,not_a_technology
+domain-specific architecture,Инфраструктура ИИ,mature
+synaptic plasticity emulation,Инфраструктура ИИ,borderline
+liquid-cooling water,Инфраструктура ИИ,not_a_technology
+"integrated sensing, communication and computation network",Инфраструктура ИИ,off_topic
+intelligent human-machine interaction,Инфраструктура ИИ,too_broad
+low-loss phase-change material,Инфраструктура ИИ,borderline
+memristor-based memory,Инфраструктура ИИ,borderline
+neuromorphic computing chip,Инфраструктура ИИ,weak_signal
+precoding design,Инфраструктура ИИ,off_topic
+event-driven computation,Инфраструктура ИИ,too_broad
+kv caching,Инфраструктура ИИ,mature
+iiot protocol,Инфраструктура ИИ,off_topic
+self-distillation training,Инфраструктура ИИ,off_topic
+axiomatic decoupling,Инфраструктура ИИ,not_a_technology
+workload-aware scheduling,Инфраструктура ИИ,mature
+memristive synapse,Инфраструктура ИИ,borderline
+ai semiconductor,Инфраструктура ИИ,too_broad
+ai-dedicated data center,Инфраструктура ИИ,too_broad
+edge-cloud collaboration,Инфраструктура ИИ,mature
+full-stack ai,Инфраструктура ИИ,not_a_technology
+multi-rack cluster,Инфраструктура ИИ,mature
+latent diffusion model,Инфраструктура ИИ,off_topic
+memristive synapses,Инфраструктура ИИ,borderline
+deep learning accelerators,Инфраструктура ИИ,mature
+iscc networks,Инфраструктура ИИ,off_topic
+organoid intelligence,Инфраструктура ИИ,weak_signal
+biological computing,Инфраструктура ИИ,borderline
+data center cooling equipment,Инфраструктура ИИ,mature
+mixture of experts architecture,Инфраструктура ИИ,mature
+adaptive task partitioning,Инфраструктура ИИ,mature
+architecture circuit co-design,Инфраструктура ИИ,too_broad
+instruction-fetch energy reduction,Инфраструктура ИИ,not_a_technology
+quantum convolutional neural network,Инфраструктура ИИ,off_topic
+flexible memristors,Инфраструктура ИИ,borderline
+distributed model training,Инфраструктура ИИ,mature
+neuromorphic device,Инфраструктура ИИ,borderline
+multi-objective reinforcement learning,Инфраструктура ИИ,mature
+trust-aware routing,Инфраструктура ИИ,off_topic
+iscc network,Инфраструктура ИИ,off_topic
+on-device inference,Инфраструктура ИИ,too_broad
+qlc eSSD,Инфраструктура ИИ,borderline
+single-walled carbon nanotube thin-film transistors,Инфраструктура ИИ,off_topic
+nvidia rtx spark pc,Инфраструктура ИИ,product
+single-walled carbon nanotube thin-film transistor,Инфраструктура ИИ,off_topic
+trusted execution environments,Инфраструктура ИИ,mature
+von neumann architecture,Инфраструктура ИИ,mature
+cluster networking,Инфраструктура ИИ,mature
+high-bandwidth memory,Инфраструктура ИИ,mature
+high-performance ai language,Инфраструктура ИИ,not_a_technology
+neuromorphic devices,Инфраструктура ИИ,borderline
+on-device intelligence,Инфраструктура ИИ,too_broad
+quantum-safe encrypted ai analytics,Инфраструктура ИИ,not_a_technology
+asic market assessment,Инфраструктура ИИ,not_a_technology
+edge computing architecture,Инфраструктура ИИ,mature
+bess qualification program,Инфраструктура ИИ,not_a_technology
+edge computing architectures,Инфраструктура ИИ,mature
+high bandwidth memory,Инфраструктура ИИ,mature
+qualcomm dragonwing npu,Инфраструктура ИИ,product
+key-value cache communication,Инфраструктура ИИ,weak_signal
+self-rectifying memristors,Инфраструктура ИИ,weak_signal
+3-tier inference cache architecture,Инфраструктура ИИ,borderline
+edge ai software,Инфраструктура ИИ,too_broad
+rugged edge ai computer,Инфраструктура ИИ,mature
+neuron-derived ai video model,Инфраструктура ИИ,not_a_technology
+nvidia-certified cooling,Инфраструктура ИИ,product
+ai market integrity rules,Инфраструктура ИИ,not_a_technology
+neuromorphic ai development card,Инфраструктура ИИ,product
+stateless memory virtualization,Инфраструктура ИИ,borderline
+chip-pairing strategy,Инфраструктура ИИ,not_a_technology
+robot ai on qualcomm npu,Инфраструктура ИИ,product
+ai ran processor,Инфраструктура ИИ,borderline
+power-efficient reconfigurable compute unit,Инфраструктура ИИ,too_broad
+webassembly-based inference,Инфраструктура ИИ,borderline
+ai-native developer experience,Инфраструктура ИИ,not_a_technology
+liquid-cooled edge data centre,Инфраструктура ИИ,borderline
+type-safe ai model,Инфраструктура ИИ,not_a_technology
+spiking reinforcement learning chip,Инфраструктура ИИ,borderline
+type-safe ai jev model,Инфраструктура ИИ,not_a_technology
+low-loss programmable mode converter,Инфраструктура ИИ,borderline
+pfas-based immersion cooling,Инфраструктура ИИ,mature
+ai model runtime,Инфраструктура ИИ,too_broad
+deterministic python-level sm,Инфраструктура ИИ,not_a_technology
+neuromorphic hardware ip,Инфраструктура ИИ,borderline
+active compute fabric,Инфраструктура ИИ,not_a_technology
+confidential computing,Инфраструктура ИИ,mature
+x86 ai acceleration,Инфраструктура ИИ,too_broad
+digital power,Инфраструктура ИИ,too_broad
+webassembly for edge inference,Инфраструктура ИИ,borderline
+ecc gpu memory,Инфраструктура ИИ,mature
+grid-to-chip approach,Инфраструктура ИИ,not_a_technology
+simple linear math for model handoffs,Инфраструктура ИИ,not_a_technology
+photonic etf,Инфраструктура ИИ,not_a_technology
+image feature extractor accelerator,Инфраструктура ИИ,too_broad
+nbnox memristor crossbar arrays,Инфраструктура ИИ,weak_signal
+neural processing unit,Инфраструктура ИИ,mature
+cloud-native architecture,Инфраструктура ИИ,mature
+ai accelerator,Инфраструктура ИИ,too_broad
+on-device inference accelerator,Инфраструктура ИИ,too_broad
+risc-v processor,Инфраструктура ИИ,mature
+foundation models for physical AI,Роботы,weak_signal
+drone swarm defense,Роботы,weak_signal
+physical ai training,Роботы,too_broad
+whole-body robot teleoperation,Роботы,weak_signal
+autonomous control of robot swarms,Роботы,weak_signal
+humanoid actuator,Роботы,borderline
+autonomous drone swarm,Роботы,borderline
+hybrid rigid-soft gripper,Роботы,borderline
+multi-robot path planning,Роботы,mature
+neuromorphic vision data,Роботы,borderline
+robotics benchmarking,Роботы,not_a_technology
+leg-based locomotion,Роботы,mature
+uncrewed underwater vehicle,Роботы,mature
+magnetic modular cubes,Роботы,weak_signal
+humanoid ai,Роботы,too_broad
+4d imaging radar,Роботы,weak_signal
+convolutional block attention mechanism,Роботы,mature
+distributed robot control,Роботы,too_broad
+broadband achromatic metalens,Роботы,off_topic
+tactile intelligence,Роботы,weak_signal
+multimaterial 3d printing,Роботы,mature
+unsupervised image enhancement,Роботы,off_topic
+depth-sensing camera,Роботы,mature
+multi-modal information fusion,Роботы,too_broad
+autonomous delivery vehicle,Роботы,mature
+bilateral grid,Роботы,off_topic
+modular robotic arm,Роботы,mature
+multi-agent collaborative learning,Роботы,too_broad
+supersymmetric gauge fields,Роботы,not_a_technology
+3d-printed humanoid robot,Роботы,borderline
+ai-powered autonomous drone,Роботы,too_broad
+quantum harmonic oscillator mode,Роботы,not_a_technology
+robot swarm control,Роботы,weak_signal
+gasless transaxillary robotic thyroidectomy,Роботы,off_topic
+robotic radical thymectomy,Роботы,off_topic
+hand movement rehabilitation,Роботы,mature
+transformer-based ai model,Роботы,too_broad
+computer vision-based feedback loop,Роботы,too_broad
+convolutional neural network-based object detection,Роботы,mature
+robotic mowing,Роботы,mature
+active perception,Роботы,mature
+four-wheel independent steering,Роботы,mature
+variable stiffness actuator,Роботы,mature
+ai-powered robotic arm,Роботы,too_broad
+variable stiffness actuators,Роботы,mature
+two-stage grasping,Роботы,mature
+autonomous delivery robot,Роботы,mature
+gait training with robotic exoskeletons,Роботы,mature
+whole-body control,Роботы,mature
+immersive teleoperation,Роботы,borderline
+3d robotic perception,Роботы,too_broad
+modular reconfigurable robot,Роботы,mature
+humanoid robot actuator,Роботы,borderline
+industrial robotics software,Роботы,too_broad
+wearable robotic exoskeleton,Роботы,mature
+intrinsic and extrinsic calibration,Роботы,mature
+p-ted,Роботы,not_a_technology
+floating reactors,Роботы,off_topic
+upper-limb robotic exoskeleton,Роботы,mature
+insect warfare,Роботы,not_a_technology
+mission robotic vehicle,Роботы,too_broad
+advanced robotic devices,Роботы,too_broad
+robotic thyroidectomy,Роботы,off_topic
+neuromorphic transistor,Роботы,off_topic
+robot actuator,Роботы,mature
+multi-agent learning,Роботы,mature
+brain chips,Роботы,off_topic
+autonomous inspection,Роботы,too_broad
+visual ai,Роботы,too_broad
+open-source robot,Роботы,too_broad
+robotics actuators,Роботы,mature
+stretchable piezoelectric sensing,Роботы,borderline
+servo robot,Роботы,mature
+synergetic control,Роботы,mature
+textile-based sensor,Роботы,off_topic
+soft robotic grippers,Роботы,mature
+robotic wheelchair,Роботы,mature
+soft robot gripper,Роботы,mature
+multi-resolution image analysis,Роботы,mature
+differential drive,Роботы,mature
+robotic wheelchairs,Роботы,mature
+shared autonomy with haptic feedback,Роботы,borderline
+actuator supplier,Роботы,not_a_technology
+robot swarm,Роботы,weak_signal
+digital threads,Роботы,off_topic
+end-to-end optimization,Роботы,not_a_technology
+lower-limb robotic exoskeleton,Роботы,mature
+bimanual manipulation,Роботы,borderline
+curved image sensor,Роботы,off_topic
+modular robots,Роботы,mature
+high-nickel cathode,Роботы,off_topic
+robot swarms,Роботы,weak_signal
+soft robotic gripper,Роботы,mature
+autonomous sailboat,Роботы,mature
+japanese encephalitis vaccine,Роботы,off_topic
+brain wave reading,Роботы,off_topic
+socket preparation,Роботы,off_topic
+bio-cooperative control,Роботы,borderline
+safe remote immersive teleoperation,Роботы,borderline
+robot grippers,Роботы,mature
+robotic prosthesis,Роботы,mature
+tiago mo,Роботы,product
+curved image sensors,Роботы,off_topic
+health benefits brokerage,Роботы,off_topic
+behavioral biometrics,Роботы,off_topic
+optimus robot,Роботы,product
+humanoid robot safety standard,Роботы,not_a_technology
+upper-limb exoskeleton,Роботы,mature
+autonomous refueling,Роботы,mature
+hinas control,Роботы,not_a_technology
+robotic-assisted thoracic surgery,Роботы,off_topic
+ros-based all-terrain inspection robot,Роботы,mature
+embodied ai,Роботы,too_broad
+refined quadruple neutrosophic logic,Роботы,not_a_technology
+single and dual-arm harvesting,Роботы,mature
+synucleinopathy eradication,Роботы,off_topic
+xxluuv mothership,Роботы,product
+athenazero robot,Роботы,product
+cobot,Роботы,mature
+millimeter-wave radar,Роботы,mature
+odyssey-3 world model,Роботы,product
+on-device inference accelerator,Роботы,off_topic
+humanoid robot firefighting,Роботы,borderline
+jennifer robotic arms,Роботы,product
+power inverter,Роботы,off_topic
+self-driving atv,Роботы,mature
+autonomous minefield breaching,Роботы,borderline
+optimus,Роботы,product
+robotic hand training data collection,Роботы,borderline
+ai agent training on video game data,Роботы,borderline
+robotic exoskeleton ai,Роботы,too_broad
+material understanding ai,Роботы,not_a_technology
+future-aware action control ai,Роботы,not_a_technology
+image-based navigation ai,Роботы,mature
+drone swarms,Роботы,borderline
+robot training data collection,Роботы,borderline
+shape adaptation in robotic grippers,Роботы,not_a_technology
+uniform force distribution in grippers,Роботы,not_a_technology
+self-locking capabilities in grippers,Роботы,not_a_technology
+ai-powered restaurant factory,Роботы,not_a_technology
+autonomous vehicle control ai agents,Роботы,too_broad
+hybrid cnn–lstm model,Роботы,mature
+metalens,Роботы,off_topic
+robotic exoskeleton,Роботы,mature
+power inverters,Роботы,off_topic
+blockchain-based distributed secure multi-party computation,Финтех,off_topic
+formal verification of secure multi-party computation protocols,Финтех,off_topic
+tokenized equities,Финтех,weak_signal
+digital trade finance,Финтех,too_broad
+merkle tree certificate,Финтех,borderline
+merkle tree certificates,Финтех,borderline
+ai-driven alpha,Финтех,not_a_technology
+ai-powered identity verification,Финтех,mature
+explanable ai,Финтех,mature
+post-quantum security architecture,Финтех,too_broad
+digital fraud prevention,Финтех,mature
+post-quantum cryptographic library,Финтех,too_broad
+real-time budget monitoring,Финтех,mature
+ai fraud detection,Финтех,mature
+distributed secure multi-party computation,Финтех,mature
+real estate underwriting,Финтех,not_a_technology
+cyber-enabled fraud,Финтех,not_a_technology
+formal modeling and verification,Финтех,off_topic
+post-quantum blockchain,Финтех,weak_signal
+mobile money adoption,Финтех,not_a_technology
+ai agentic detection,Финтех,product
+pqxdh,Финтех,off_topic
+adversarial ml,Финтех,mature
+blockchain payments,Финтех,mature
+tokenized bonds,Финтех,weak_signal
+privacy-preserving protocols,Финтех,too_broad
+comorbidity analysis,Финтех,off_topic
+digital id wallet,Финтех,borderline
+tokenised deposits,Финтех,weak_signal
+ai-assisted compliance,Финтех,too_broad
+ai-driven financial inclusion,Финтех,not_a_technology
+quantum cybersecurity,Финтех,too_broad
+temporal logic specification,Финтех,off_topic
+blind quantum computing,Финтех,off_topic
+gsnr estimation,Финтех,off_topic
+blockchain-based protocol,Финтех,too_broad
+ai force,Финтех,not_a_technology
+digital fraud detection,Финтех,mature
+payment integrity,Финтех,not_a_technology
+ai-enabled fraud detection,Финтех,mature
+credit scoring models,Финтех,mature
+quantum resistant cryptography algorithm,Финтех,borderline
+secure multi-party computation protocols,Финтех,mature
+formal verification of security protocols,Финтех,mature
+verifiably encrypted signature,Финтех,mature
+quantum-safe security,Финтех,too_broad
+real-time underwriting,Финтех,too_broad
+on-chain commodity trading,Финтех,borderline
+quantum computer-based attacks,Финтех,not_a_technology
+e-kyc,Финтех,mature
+post-quantum computing,Финтех,too_broad
+ai anomaly detection,Финтех,mature
+digital identity wallet,Финтех,borderline
+quantum-resistant cryptographic algorithms,Финтех,borderline
+conversational virtual assistants,Финтех,mature
+privacy-preserving data integration,Финтех,too_broad
+biometric liveness detection,Финтех,mature
+regulatory governance,Финтех,not_a_technology
+software automation,Финтех,too_broad
+blockchain threat detection,Финтех,too_broad
+graph-based machine learning,Финтех,mature
+ai-powered fraud detection,Финтех,mature
+digital identity credentials,Финтех,borderline
+compliance intelligence,Финтех,too_broad
+electronic know your customer,Финтех,mature
+instant payments,Финтех,mature
+secure customer onboarding,Финтех,mature
+ai compliance,Финтех,too_broad
+ai-enabled attacks,Финтех,not_a_technology
+blockchain ledger,Финтех,mature
+decentralized federated learning,Финтех,off_topic
+quantum readiness,Финтех,not_a_technology
+digital identity management,Финтех,mature
+grover’s algorithm,Финтех,off_topic
+privacy-preserving federated learning,Финтех,borderline
+ai-powered cyber threats,Финтех,not_a_technology
+on-device inference,Финтех,off_topic
+governed ai,Финтех,too_broad
+grover's algorithm,Финтех,off_topic
+ai oversight,Финтех,not_a_technology
+real-time fraud prevention,Финтех,mature
+system-level optimization,Финтех,not_a_technology
+ai-driven fraud detection,Финтех,mature
+cross-border payment,Финтех,mature
+document checks,Финтех,not_a_technology
+eudi standards,Финтех,not_a_technology
+ai insurance fraud detection,Финтех,mature
+ai-generated hr policies,Финтех,off_topic
+verifiable credentials,Финтех,borderline
+evo digital id wallet,Финтех,product
+on-device inference accelerator,Финтех,off_topic
+background screening,Финтех,not_a_technology
+index containing cryptocurrency,Финтех,not_a_technology
+ai underwriting agents,Финтех,weak_signal
+document ai,Финтех,mature
+quantum-resistant hybrid key exchange,Финтех,borderline
+embedded identity sdk,Финтех,product
+post-quantum testing,Финтех,not_a_technology
+ai assistant for merchants,Финтех,too_broad
+real-time finance,Финтех,too_broad
+tokenized cross-border payments,Финтех,weak_signal
+blockchain settlement network,Финтех,borderline
+blockchain-based secure multi-party computation protocol,Финтех,off_topic
+tokenization of central bank reserves,Финтех,weak_signal
+ai regulation,Финтех,not_a_technology
+ai-driven technology holding,Финтех,not_a_technology
+quantum resistant cryptography,Финтех,borderline
+tax-ready financial reporting,Финтех,not_a_technology
+credit card fraud detection,Финтех,mature
+predictive threat analysis,Финтех,too_broad
+tokuryu fraud,Финтех,not_a_technology
+behavioral signals,Финтех,not_a_technology
+sovereign ai,Финтех,off_topic
+embedded frontier ai evaluation,Финтех,not_a_technology
+symbolic execution,Финтех,off_topic
+cloud accounting,Финтех,mature
+hardware security module,Финтех,mature
+on-chain decision logs,Финтех,borderline
+ai-powered credit scoring,Финтех,mature
+quantum-resistant cryptography,Финтех,borderline
+secure multi-party computation,Финтех,mature
+cyber-resilience,Финтех,too_broad
+signal protocol,Финтех,mature
+decentralized finance,Финтех,mature
+regulatory sandbox,Финтех,not_a_technology
+robo-advisor,Финтех,mature
+decentralized identity,Финтех,borderline
+cryptographic security,Финтех,too_broad
+autonomous ai agents,Финтех,too_broad

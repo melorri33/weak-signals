@@ -3,6 +3,8 @@
 Основной путь — обученная CatBoost-модель (src/model/artifacts/weak_signal.cbm, собирается `python -m src.model.train`),
 объяснения — SHAP-вклады признаков (считает сам CatBoost). Если файла модели нет — прозрачная эвристика
 того же вида (вклады в логит), чтобы конвейер работал с нуля.
+Поверх — модель названий (src/model/names.py): итоговая уверенность смешивает оценку по публикациям
+с оценкой по смыслу названия, а её вывод идёт первой причиной в объяснении.
 Каждый вызов пишется в журнал моделей (требование ТЗ).
 """
 
@@ -19,6 +21,7 @@ import pandas as pd
 
 from src.common.logs import get_logger, model_timer
 from src.common.schemas import Candidate, CandidateFeatures, Explanation, ScoredCandidate
+from src.model import names
 from src.model.vectorize import FEATURE_NAMES, explain_ru, to_row
 
 MODEL_PATH = Path(__file__).parent / "artifacts" / "weak_signal.cbm"
@@ -45,7 +48,34 @@ def score(candidates: list[Candidate], features: list[CandidateFeatures]) -> lis
             scored = _score_with_model(model, candidates, by_id)
         else:
             scored = [_score_heuristic(c, by_id.get(c.id)) for c in candidates]
+    scored = _with_name_model(scored)
     return sorted(scored, key=lambda s: s.score, reverse=True)
+
+
+def _with_name_model(scored: list[ScoredCandidate]) -> list[ScoredCandidate]:
+    """Смешать оценку по публикациям с оценкой по названию (src/model/names.py).
+
+    Ручная разметка трёх прогонов (270 мест топ-15): только CatBoost — 40 слабых сигналов,
+    смесь с моделью названий — 47; вместе со спорными 65 → 91. Слишком широких названий
+    в топе стало 29 вместо 76. Нет модели названий — оценки остаются как были.
+    """
+    probs = names.name_scores([s.name for s in scored])
+    if probs is None:
+        return scored
+    weight = names.blend_weight()
+    out = []
+    for s, p in zip(scored, probs, strict=True):
+        final = round((1 - weight) * s.score + weight * p, 4)
+        # Вклад — от нейтральных 0.5, а не от оценки CatBoost: иначе при CatBoost 0.94 хорошее название
+        # с 0.9 выглядело бы доводом «против», хотя модель названий голосует «за».
+        reason = Explanation(
+            feature="name_pattern",
+            value=round(p, 4),
+            contribution=round(weight * (p - 0.5), 4),
+            text=names.explain_ru(p),
+        )
+        out.append(s.model_copy(update={"score": final, "top_reasons": [reason, *s.top_reasons]}))
+    return out
 
 
 @lru_cache(maxsize=1)
