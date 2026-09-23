@@ -263,3 +263,22 @@ def test_every_plural_generic_head_has_its_singular():
         if singular not in _TOO_GENERIC_HEAD:
             missing.append(f"«{word}» есть, «{singular}» нет")
     assert not missing, "в списке общих слов не хватает форм: " + "; ".join(missing)
+
+
+async def test_query_reaches_the_prompt():
+    """Шаг извлечения знает запрос: без него в «Роботы» попадали операции на щитовидке и суперсимметрия."""
+    docs = [_doc("a", "Startup raises $12M to run language models on phones", SourceType.NEWS)]
+    client = _FakeClient([{"candidates": [{"name": "on-device inference", "document_ids": ["d1"]}]}])
+
+    await extract_candidates(docs, client=client, query="перспективные технологии в робототехнике")
+
+    assert "«перспективные технологии в робототехнике»" in client.prompts[0]
+
+
+async def test_without_query_there_is_no_topic_line():
+    docs = [_doc("a", "Startup raises $12M to run language models on phones", SourceType.NEWS)]
+    client = _FakeClient([{"candidates": [{"name": "on-device inference", "document_ids": ["d1"]}]}])
+
+    await extract_candidates(docs, client=client)
+
+    assert "Пользователь ищет" not in client.prompts[0]

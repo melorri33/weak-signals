@@ -133,7 +133,9 @@ async def run(
     result.documents_processed = len(docs)
 
     progress("выделяем кандидатов")
-    candidates = await _with_budget("extract_candidates", CANDIDATES_BUDGET_S, extract_candidates(docs), default=[])
+    candidates = await _with_budget(
+        "extract_candidates", CANDIDATES_BUDGET_S, extract_candidates(docs, query=query), default=[]
+    )
     if not candidates:
         return _failed(result, started, "Не удалось выделить ни одной технологии-кандидата")
     result.candidates_found = len(candidates)

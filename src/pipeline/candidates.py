@@ -197,16 +197,19 @@ class _Answer(BaseModel):
     candidates: list[_Candidate] = Field(default_factory=list)
 
 
-async def extract_candidates(docs: list[Document], client: LLMClient | None = None) -> list[Candidate]:
+async def extract_candidates(
+    docs: list[Document], client: LLMClient | None = None, query: str | None = None
+) -> list[Candidate]:
     """Выделить технологии-кандидаты из найденных документов.
 
     Один кандидат может опираться на несколько документов; кандидаты отсортированы по числу документов.
+    query — запрос пользователя: модель выписывает технологии по его теме. Без него — из любых областей.
     """
     if not docs:
         return []
     try:
         client = client or LLMClient.from_settings()
-        candidates = await _ask_llm(docs, client)
+        candidates = await _ask_llm(docs, client, query)
     except LLMError as exc:
         log.warning("extract_candidates: LLM не помогла (%s) — режу названия из заголовков", exc)
         candidates = []
@@ -218,7 +221,23 @@ async def extract_candidates(docs: list[Document], client: LLMClient | None = No
     return candidates
 
 
-async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
+def _topic(query: str | None) -> str:
+    """Строка промпта о теме поиска.
+
+    Раньше шаг запроса не знал и выписывал всё подряд из прочитанного. Ручная разметка 90 карточек
+    23.09: 14 мест топ-15 заняли технологии чужой области — в «Роботах» операции на щитовидке
+    и суперсимметричные поля, в «Индустриальном ИИ» защита ИИ-агентов. Фильтр мягкий: судья,
+    отбраковывающий по теме, выбрасывал и хорошее, поэтому при сомнении модель выписывает.
+    """
+    if not query:
+        return ""
+    return (
+        f"Пользователь ищет технологии по запросу: «{query}». Выписывай технологии, которые относятся "
+        "к этой теме; технологии явно из другой отрасли пропускай. Если сомневаешься — выписывай."
+    )
+
+
+async def _ask_llm(docs: list[Document], client: LLMClient, query: str | None = None) -> list[Candidate]:
     """Опросить модель по пачкам документов и склеить ответы."""
     chosen = _order_for_llm(docs)[:MAX_DOCS_FOR_LLM]
     batches = [chosen[i : i + DOCS_IN_BATCH] for i in range(0, len(chosen), DOCS_IN_BATCH)]
@@ -240,7 +259,7 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
             break
         batch_started = time.perf_counter()
         labels = {f"d{i}": doc for i, doc in enumerate(batch, start=1)}
-        prompt = render("extract_candidates", documents=_documents_block(labels))
+        prompt = render("extract_candidates", documents=_documents_block(labels), topic=_topic(query))
         try:
             answer = await client.ask_json(step="extract_candidates", prompt=prompt, schema=_Answer, max_tokens=500)
         except LLMError as exc:
