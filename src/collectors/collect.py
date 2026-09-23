@@ -38,8 +38,16 @@ async def collect(phrases: list[str], limit: int = 500) -> list[Document]:
 
     async with httpx.AsyncClient(headers={"User-Agent": user_agent("document collector", settings)}) as client:
         tasks: dict[asyncio.Future[list[Document] | None], str] = {}
+        # Новости — задача на каждую пару «фраза + лента», и найденное складывается в свой список
+        # по мере прихода. Раньше была одна задача на фразу по всем лентам разом: отмена по бюджету
+        # уносила вместе с листающим Bing уже полученные ответы остальных лент по этой фразе.
+        news_sinks: dict[asyncio.Future[list[Document] | None], list[Document]] = {}
         for phrase in phrases:
-            tasks[asyncio.ensure_future(news.search(phrase, settings, client, errors))] = "news"
+            for feed in news.feeds():
+                sink: list[Document] = []
+                call = asyncio.ensure_future(news.search_feed(feed, phrase, settings, client, errors, sink))
+                tasks[call] = "news"
+                news_sinks[call] = sink
             for source, search in (("openalex", openalex.search), ("arxiv", arxiv.search)):
                 call = asyncio.ensure_future(
                     safe_call(source, lambda s=search, p=phrase: s(p, settings, client), errors)
@@ -55,9 +63,14 @@ async def collect(phrases: list[str], limit: int = 500) -> list[Document]:
                 settings.collect_budget_s,
                 ", ".join(f"{source} ×{n}" for source, n in missed.items()),
             )
+        await asyncio.gather(*pending, return_exceptions=True)
         for task in done:
+            if task in news_sinks:
+                continue  # новости забираем из списков ниже — там и то, что пришло до отмены
             if found := task.result():
                 by_source[tasks[task]].extend(found)
+        for sink in news_sinks.values():
+            by_source["news"].extend(sink)
 
     # Новости первыми: 71% источников датасета организаторов — техноновости, и именно в них
     # живут ранние технологии (раунды стартапов, первые внедрения), которых ещё нет в науке.

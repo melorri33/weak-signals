@@ -136,3 +136,97 @@ async def test_feed_answering_429_is_dropped_for_the_rest_of_the_run(settings, m
     assert len(calls) == 1  # спросили один раз, дальше не ходим
     assert errors == []  # это не ошибка источника, а его просьба не частить
     news.forget_exhausted_feeds()
+
+
+def _rss(*links: str) -> str:
+    """Лента из заданных ссылок — чтобы у каждой страницы были свои документы."""
+    items = "".join(
+        f"<item><title>Новость {n}</title><link>{link}</link><description>о {link}</description></item>"
+        for n, link in enumerate(links)
+    )
+    return f'<?xml version="1.0"?><rss version="2.0"><channel>{items}</channel></rss>'
+
+
+def _paged_handler(pages: dict[str, str], calls: list[str]):
+    """Отвечает страницей по параметру first; без параметра — первая страница."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        first = request.url.params.get("first", "1")
+        body = pages.get(first)
+        if body == "429":
+            return httpx.Response(429)
+        return httpx.Response(200, content=(body or _rss()).encode("utf-8"))
+
+    return handler
+
+
+async def test_feed_pages_are_merged(settings, monkeypatch: pytest.MonkeyPatch):
+    """Лента со страницами листается: документы всех страниц идут в выдачу.
+
+    Первая страница новостного поиска — около девяти записей с семи сайтов, а источники
+    датасета организаторов разбросаны по двумстам сайтам. Замер 22.09: страницы 2-5
+    приносят сотни новых документов с полутора-двух сотен сайтов.
+    """
+    monkeypatch.setattr(news, "feeds", lambda: [
+        {"name": "поиск", "url": "https://example.org/?q={query}", "pages": [1, 11, 21]},
+    ])
+    monkeypatch.setattr(news, "FEED_PAUSE_S", 0)
+    news.forget_exhausted_feeds()
+    calls: list[str] = []
+    pages = {
+        "1": _rss("https://a.example.com/1", "https://b.example.com/2"),
+        "11": _rss("https://c.example.com/3"),
+        "21": _rss("https://d.example.com/4"),
+    }
+
+    errors: list[str] = []
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_paged_handler(pages, calls))) as client:
+        docs = await news.search("edge ai", settings, client, errors)
+
+    assert len(calls) == 3
+    assert sorted(d.source for d in docs) == ["a.example.com", "b.example.com", "c.example.com", "d.example.com"]
+    news.forget_exhausted_feeds()
+
+
+async def test_paging_stops_when_the_feed_repeats_itself(settings, monkeypatch: pytest.MonkeyPatch):
+    """Страница без новых документов — дальше листать некуда, запросы не тратим."""
+    monkeypatch.setattr(news, "feeds", lambda: [
+        {"name": "поиск", "url": "https://example.org/?q={query}", "pages": [1, 11, 21]},
+    ])
+    monkeypatch.setattr(news, "FEED_PAUSE_S", 0)
+    news.forget_exhausted_feeds()
+    calls: list[str] = []
+    same = _rss("https://a.example.com/1")
+    pages = {"1": same, "11": same, "21": _rss("https://z.example.com/9")}
+
+    errors: list[str] = []
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_paged_handler(pages, calls))) as client:
+        docs = await news.search("edge ai", settings, client, errors)
+
+    assert len(calls) == 2  # третью страницу не просили
+    assert [d.source for d in docs] == ["a.example.com"]
+    news.forget_exhausted_feeds()
+
+
+async def test_refusal_mid_paging_keeps_what_was_already_received(settings, monkeypatch: pytest.MonkeyPatch):
+    """429 на второй странице не отменяет первую.
+
+    Отмена посреди шага, уносящая уже полученное, в этом проекте встречалась трижды.
+    """
+    monkeypatch.setattr(news, "feeds", lambda: [
+        {"name": "поиск", "url": "https://example.org/?q={query}", "pages": [1, 11, 21]},
+    ])
+    monkeypatch.setattr(news, "FEED_PAUSE_S", 0)
+    news.forget_exhausted_feeds()
+    calls: list[str] = []
+    pages = {"1": _rss("https://a.example.com/1"), "11": "429", "21": _rss("https://z.example.com/9")}
+
+    errors: list[str] = []
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_paged_handler(pages, calls))) as client:
+        docs = await news.search("edge ai", settings, client, errors)
+
+    assert [d.source for d in docs] == ["a.example.com"]
+    assert len(calls) == 2  # после отказа дальше не листаем
+    assert errors == []
+    news.forget_exhausted_feeds()
