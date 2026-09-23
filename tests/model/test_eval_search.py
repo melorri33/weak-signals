@@ -45,7 +45,8 @@ def test_match_by_company_and_term_with_word_boundaries():
 def test_evaluate_shows_where_items_are_lost():
     docs = [Document(id="a", source="rss", source_type=SourceType.NEWS, title="Quantum Diamonds and Batterix", url="u")]
     cands = [Candidate(id="c1", name="quantum sensing")]
-    result = SearchResult(run_id="r", query="q", top=[_card("quantum sensors", "Quantum Diamonds launches qsense")])
+    card = _card("diamond quantum sensing", "Quantum Diamonds launches qsense")
+    result = SearchResult(run_id="r", query="q", top=[card])
 
     stages = evaluate(REF, "Защита ИИ", result=result, documents=docs, candidates=cands)
 
@@ -91,3 +92,49 @@ def test_queries_yaml_covers_all_dataset_domains_and_flags_mature():
         run_id="r", query=DOMAIN_QUERIES["Финтех"], top=[_card("Mobile banking", "x"), _card("sodium-ion storage", "y")]
     )
     assert must_exclude_violations(result) == ["mobile banking"]
+
+
+def test_top15_does_not_count_someone_elses_headline():
+    """Термин в заголовке статьи из списка ссылок — не наша заслуга.
+
+    Замер 21.09 по здоровому прогону: все до единого совпадения старой проверки приходили
+    именно оттуда. Жюри сверяет название и суть сигнала, а не то, на что мы сослались.
+    """
+    card = _card("edge inference accelerator", "Quantum sensing goes commercial")
+    result = SearchResult(run_id="r", query="q", top=[card])
+
+    stages = evaluate(REF, "Защита ИИ", result=result)
+
+    assert stages[-1].stage == "топ-15"
+    assert stages[-1].found == {}
+
+
+def test_top15_counts_our_name_across_word_forms():
+    """«quantum sensors» и «quantum sensing» — одна технология, множественное число не помеха."""
+    result = SearchResult(run_id="r", query="q", top=[_card("photonic quantum sensing", "нейтральный заголовок")])
+
+    stages = evaluate(REF, "Защита ИИ", result=result)
+
+    assert sorted(stages[-1].found) == [1]
+    assert "название" in stages[-1].found[1]
+
+
+def test_top15_rejects_a_name_broader_than_the_dataset_one():
+    """Наше название может быть уже датасетного, но не шире: широкое эксперт не засчитает."""
+    result = SearchResult(run_id="r", query="q", top=[_card("battery", "нейтральный заголовок")])
+
+    stages = evaluate(REF, "Защита ИИ", result=result)
+
+    assert stages[-1].found == {}
+
+
+def test_top15_counts_the_technology_named_in_the_description():
+    """Назвали в описании карточки — засчитываем: организаторы сверяют и суть тоже."""
+    card = _card("новая химия накопителей", "нейтральный заголовок")
+    card.description = "Разработчики применяют solid-state battery в серийных модулях."
+    result = SearchResult(run_id="r", query="q", top=[card])
+
+    stages = evaluate(REF, "Защита ИИ", result=result)
+
+    assert sorted(stages[-1].found) == [2]
+    assert "описание" in stages[-1].found[2]
