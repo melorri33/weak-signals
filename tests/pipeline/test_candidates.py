@@ -42,15 +42,7 @@ async def test_llm_names_the_technology_not_the_headline():
         _doc("a", "Startup raises $12M to run language models on phones", SourceType.NEWS),
         _doc("b", "On-device inference for small language models"),
     ]
-    client = _FakeClient(
-        [
-            {
-                "candidates": [
-                    {"name": "on-device inference", "document_ids": ["d1", "d2"]}
-                ]
-            }
-        ]
-    )
+    client = _FakeClient([{"candidates": [{"name": "on-device inference", "document_ids": ["d1", "d2"]}]}])
 
     candidates = await extract_candidates(docs, client=client)
 
@@ -263,3 +255,28 @@ async def test_description_instead_of_a_term_is_dropped():
     candidates = await extract_candidates(docs, client=client)
 
     assert [c.name for c in candidates] == ["on-device inference"]
+
+
+def test_every_plural_generic_head_has_its_singular():
+    """Для каждого слова во множественном числе должно быть единственное.
+
+    Именно такого пропуска стоила ошибка: «platforms» в списке было, «platform» не было,
+    и записи вроде «… platform» проходили фильтр и занимали места в топ-15. Замер 21.09
+    по двум прогонам: 5 и 8 таких записей из 90 мест выдачи.
+
+    Обратную сторону не проверяем: у «processing» и «infrastructure» естественного
+    множественного числа нет, и требовать его бессмысленно.
+    """
+    from src.pipeline.candidates import _TOO_GENERIC_HEAD
+
+    missing = []
+    for word in sorted(_TOO_GENERIC_HEAD):
+        if word.endswith("ies"):
+            singular = f"{word[:-3]}y"
+        elif word.endswith("s") and not word.endswith("ss"):
+            singular = word[:-1]
+        else:
+            continue
+        if singular not in _TOO_GENERIC_HEAD:
+            missing.append(f"«{word}» есть, «{singular}» нет")
+    assert not missing, "в списке общих слов не хватает форм: " + "; ".join(missing)

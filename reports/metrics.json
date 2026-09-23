@@ -1,8 +1,8 @@
 {
-  "accuracy": 0.8357,
-  "precision": 0.7059,
-  "recall": 0.72,
-  "f1": 0.7129,
-  "roc_auc": 0.8779,
-  "pr_auc": 0.7141
+  "accuracy": 0.8433,
+  "precision": 0.7,
+  "recall": 0.7,
+  "f1": 0.7,
+  "roc_auc": 0.8895,
+  "pr_auc": 0.748
 }

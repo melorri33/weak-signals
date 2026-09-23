@@ -152,7 +152,54 @@ def match(text: str, reference: list[ReferenceItem]) -> list[tuple[ReferenceItem
     return hits
 
 
+# Только служебные слова. Слова вроде platform, system, device выбрасывать нельзя: они часть
+# названия, и без них требование к совпадению становится слабее, а не строже — наше широкое
+# название засчитывалось бы против более узкого датасетного.
+_MATCH_STOP = {"for", "and", "the", "of", "in", "on", "with", "to", "from", "as", "by", "based", "using"}
+
+
+def _stem(word: str) -> str:
+    """Грубая основа: chips и chip, robotics и robotic — одно слово.
+
+    Без этого сверка теряла настоящие совпадения на множественном числе: наша карточка
+    в единственном числе не засчитывалась против термина датасета во множественном.
+    """
+    word = word.lower()
+    for suffix in ("ization", "isation", "ics", "ing", "ies", "es", "s"):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 4:
+            return word[: -len(suffix)] + ("y" if suffix == "ies" else "")
+    return word
+
+
+def _key_words(text: str) -> set[str]:
+    return {_stem(w) for w in re.findall(r"[A-Za-z0-9]+", text) if _stem(w) not in _MATCH_STOP and len(w) > 2}
+
+
+def card_names_technology(card, item: ReferenceItem) -> str | None:
+    """Назвали ли мы в карточке ту же технологию. Возвращает, чем подтверждено, или None.
+
+    Засчитываем только то, что написали сами: название, русское название и описание.
+    Заголовки статей из списка ссылок не в счёт. Замер 21.09 по здоровому прогону показал,
+    что все до единого совпадения старой проверки приходили именно оттуда: термин датасета
+    встречался в заголовке статьи, на которую мы сослались, а в нашем названии его не было.
+    Жюри сверяет по сути и по названию сигнала (ответ организаторов 19.09), а не по тому,
+    на что мы сослались.
+
+    Название сверяем по словам с приведением к основе. Требуем, чтобы все значащие слова
+    термина датасета были в нашем названии: наше может быть уже датасетного, но не шире —
+    широкую формулировку эксперт не засчитает.
+    """
+    ours = _key_words(f"{card.name} {card.name_ru or ''}")
+    theirs = _key_words(item.term_en)
+    if len(theirs) >= 2 and len(ours) >= 2 and theirs <= ours:
+        return f"название «{card.name}»"
+    if _mentions("\n".join([card.description or "", card.case_example or ""]), item.term_en):
+        return f"описание карточки «{card.name}»"
+    return None
+
+
 def _card_text(card) -> str:
+    """Весь текст карточки вместе с источниками — для диагностики, не для метрики."""
     parts = [card.name, card.name_ru or "", card.description, card.case_example]
     parts += [s.title for s in card.sources] + [s.ru_summary or "" for s in card.sources]
     return "\n".join(parts)
@@ -186,8 +233,10 @@ def evaluate(
     if result is not None:
         found: dict[int, str] = {}
         for card in result.top:
-            for item, by in match(_card_text(card), items):
-                found.setdefault(item.id, f"{by} → «{card.name_ru or card.name}»")
+            for item in items:
+                by = card_names_technology(card, item)
+                if by is not None:
+                    found.setdefault(item.id, by)
         stages.append(StageReport("топ-15", found))
     return stages
 

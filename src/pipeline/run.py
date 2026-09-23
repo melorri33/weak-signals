@@ -152,7 +152,7 @@ async def run(
 
     progress("собираем карточки")
     _log_near_misses(scored)
-    result.top = await _cards(scored, candidates, docs)
+    result.top = await _cards(drop_name_variants(scored), candidates, docs)
     result.confident_signals = sum(card.score > CONFIDENT_THRESHOLD for card in result.top)
 
     result.status = "done"
@@ -341,6 +341,54 @@ def _log_near_misses(scored: list[ScoredCandidate]) -> None:
         len(missed),
         "; ".join(f"{s.name} {s.score:.2f}" for s in missed),
     )
+
+
+# Служебные слова: по ним два названия не считаются вариантами одного.
+_VARIANT_STOP = {"for", "and", "the", "of", "in", "on", "with", "to", "from", "as", "by", "based", "using"}
+
+
+def _variant_stem(word: str) -> str:
+    word = word.lower()
+    for suffix in ("ization", "isation", "ics", "ing", "ies", "es", "s"):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 4:
+            return word[: -len(suffix)] + ("y" if suffix == "ies" else "")
+    return word
+
+
+def _name_words(name: str) -> set[str]:
+    return {_variant_stem(w) for w in re.findall(r"[A-Za-z0-9]+", name)
+            if _variant_stem(w) not in _VARIANT_STOP and len(w) > 2}
+
+
+def drop_name_variants(scored: list[ScoredCandidate]) -> list[ScoredCandidate]:
+    """Из нескольких названий одной технологии оставить самое узкое.
+
+    В выдаче попадались по два-три варианта одного и того же, и каждый занимал своё место
+    в топ-15. Замер 21.09 по шести областям: 5 мест из 90 уходило на повторы. Жюри засчитает
+    такие карточки как одно совпадение, а место отнято у другой технологии.
+
+    Оставляем самое узкое название, а не самое высоко оценённое. Причина в том, как сверяют:
+    засчитывается, когда все слова названия из датасета есть в нашем. Узкое название
+    засчитается и против самого себя, и против более широкого термина датасета, широкое
+    против узкого — нет.
+    """
+    kept: list[ScoredCandidate] = []
+    for item in scored:
+        words = _name_words(item.name)
+        if len(words) < 2:
+            kept.append(item)
+            continue
+        twin = next((i for i, k in enumerate(kept)
+                     if len(_name_words(k.name)) >= 2
+                     and (_name_words(k.name) <= words or words <= _name_words(k.name))), None)
+        if twin is None:
+            kept.append(item)
+        elif len(words) > len(_name_words(kept[twin].name)):
+            log.info("Вариант названия: «%s» вместо «%s» — оно уже", item.name, kept[twin].name)
+            kept[twin] = item
+        else:
+            log.info("Вариант названия: «%s» пропускаю, уже есть «%s»", item.name, kept[twin].name)
+    return kept
 
 
 async def _cards(
