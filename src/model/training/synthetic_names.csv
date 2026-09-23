@@ -1,0 +1,137 @@
+name,label,kind
+sodium-ion grid storage,1,synthetic_weak_signal
+iron-air battery,1,synthetic_weak_signal
+sand thermal battery,1,synthetic_weak_signal
+organic redox flow battery,1,synthetic_weak_signal
+liquid metal battery,1,synthetic_weak_signal
+lithium metal anode,1,synthetic_weak_signal
+perovskite-silicon tandem cell,1,synthetic_weak_signal
+closed-loop geothermal,1,synthetic_weak_signal
+direct air capture sorbent,1,synthetic_weak_signal
+ammonia cracking catalyst,1,synthetic_weak_signal
+power-to-liquid e-kerosene,1,synthetic_weak_signal
+liquid hydrogen aircraft propulsion,1,synthetic_weak_signal
+solid-state transformer,1,synthetic_weak_signal
+gallium oxide power transistor,1,synthetic_weak_signal
+diamond semiconductor substrate,1,synthetic_weak_signal
+molybdenum disulfide transistor,1,synthetic_weak_signal
+triboelectric nanogenerator,1,synthetic_weak_signal
+thermoelectric wearable generator,1,synthetic_weak_signal
+sweat-based biosensor patch,1,synthetic_weak_signal
+continuous ketone monitor,1,synthetic_weak_signal
+bacterial self-healing concrete,1,synthetic_weak_signal
+mycelium leather,1,synthetic_weak_signal
+precision fermentation dairy protein,1,synthetic_weak_signal
+cultivated meat scaffold,1,synthetic_weak_signal
+prime editing,1,synthetic_weak_signal
+epigenetic editing,1,synthetic_weak_signal
+in vivo CAR-T,1,synthetic_weak_signal
+personalized neoantigen vaccine,1,synthetic_weak_signal
+DNA data storage,1,synthetic_weak_signal
+enzymatic DNA synthesis,1,synthetic_weak_signal
+focused ultrasound neuromodulation,1,synthetic_weak_signal
+brain-computer interface speech decoder,1,synthetic_weak_signal
+spatial proteomics,1,synthetic_weak_signal
+3D-bioprinted skin graft,1,synthetic_weak_signal
+phage therapy cocktail,1,synthetic_weak_signal
+space-based solar power,1,synthetic_weak_signal
+satellite direct-to-device connectivity,1,synthetic_weak_signal
+laser inter-satellite link,1,synthetic_weak_signal
+reconfigurable intelligent surface,1,synthetic_weak_signal
+terahertz wireless link,1,synthetic_weak_signal
+nitrogen-vacancy quantum sensing,1,synthetic_weak_signal
+trapped-ion quantum network,1,synthetic_weak_signal
+agrivoltaics,1,synthetic_weak_signal
+nitrogen-fixing microbe seed coating,1,synthetic_weak_signal
+gene-edited drought-tolerant wheat,1,synthetic_weak_signal
+acoustic metamaterial silencer,1,synthetic_weak_signal
+radiative cooling film,1,synthetic_weak_signal
+electrochemical lithium extraction,1,synthetic_weak_signal
+protein language model,1,synthetic_weak_signal
+gaussian splatting,1,synthetic_weak_signal
+diffusion-based protein design,1,synthetic_weak_signal
+AI weather foundation model,1,synthetic_weak_signal
+structural battery composite,1,synthetic_weak_signal
+magnesium-ion battery,1,synthetic_weak_signal
+hydrogel wound sensor,1,synthetic_weak_signal
+microfluidic organ-on-chip,1,synthetic_weak_signal
+cell-free protein synthesis,1,synthetic_weak_signal
+carbon mineralization concrete,1,synthetic_weak_signal
+fusion stellarator magnet,1,synthetic_weak_signal
+quantum dot solar window,1,synthetic_weak_signal
+ai-powered analytics platform,0,synthetic_error
+ai-driven solutions,0,synthetic_error
+smart technology,0,synthetic_error
+digital transformation,0,synthetic_error
+intelligent automation platform,0,synthetic_error
+next-generation computing,0,synthetic_error
+advanced ai systems,0,synthetic_error
+ai-enabled services,0,synthetic_error
+big data analytics,0,synthetic_error
+internet of things,0,synthetic_error
+blockchain technology,0,synthetic_error
+artificial intelligence,0,synthetic_error
+data analytics,0,synthetic_error
+cybersecurity solutions,0,synthetic_error
+automation software,0,synthetic_error
+digital platform,0,synthetic_error
+smart devices,0,synthetic_error
+ai solutions for business,0,synthetic_error
+cloud-based ai services,0,synthetic_error
+high-performance computing,0,synthetic_error
+ai-powered tools,0,synthetic_error
+intelligent systems,0,synthetic_error
+iPhone 17,0,synthetic_error
+Tesla Model Y,0,synthetic_error
+ChatGPT Enterprise,0,synthetic_error
+Microsoft Copilot,0,synthetic_error
+AWS Bedrock,0,synthetic_error
+Snapdragon 8 Elite,0,synthetic_error
+Pixel 10 Pro,0,synthetic_error
+Starlink Mini,0,synthetic_error
+Llama 4 Scout,0,synthetic_error
+Nvidia H200,0,synthetic_error
+Apple Vision Pro,0,synthetic_error
+Samsung Galaxy Ring,0,synthetic_error
+Gemini 2.5 Pro,0,synthetic_error
+Intel Core Ultra,0,synthetic_error
+convolutional neural network,0,synthetic_error
+random forest,0,synthetic_error
+support vector machine,0,synthetic_error
+k-means clustering,0,synthetic_error
+transfer learning,0,synthetic_error
+recurrent neural network,0,synthetic_error
+principal component analysis,0,synthetic_error
+gradient boosting,0,synthetic_error
+lithium-ion battery,0,synthetic_error
+solar photovoltaic panel,0,synthetic_error
+wind turbine,0,synthetic_error
+barcode scanner,0,synthetic_error
+rfid tag,0,synthetic_error
+gps navigation,0,synthetic_error
+relational database,0,synthetic_error
+virtual machine,0,synthetic_error
+containerization,0,synthetic_error
+public key infrastructure,0,synthetic_error
+two-factor authentication,0,synthetic_error
+optical character recognition,0,synthetic_error
+speech-to-text,0,synthetic_error
+industrial robot arm,0,synthetic_error
+programmable logic controller,0,synthetic_error
+long short-term memory,0,synthetic_error
+market growth,0,synthetic_error
+investment strategy,0,synthetic_error
+regulatory framework,0,synthetic_error
+digital skills gap,0,synthetic_error
+customer experience,0,synthetic_error
+supply chain resilience,0,synthetic_error
+talent shortage,0,synthetic_error
+venture funding round,0,synthetic_error
+sustainability goals,0,synthetic_error
+risk management,0,synthetic_error
+financial literacy,0,synthetic_error
+public-private partnership,0,synthetic_error
+ethical guidelines,0,synthetic_error
+workforce reskilling,0,synthetic_error
+data privacy concerns,0,synthetic_error
+industry adoption,0,synthetic_error
