@@ -333,10 +333,19 @@ def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[s
         candidate.document_ids.extend(d for d in doc_ids if d not in candidate.document_ids)
 
 
+# Длиннее этого название перестаёт быть термином и становится описанием. Замер 21.09
+# по прогону из шести областей: у названий в 2-3 слова статистика публикаций находится
+# в 70-94% случаев, у четырёхсловных — в 29%, у пятисловных и длиннее — в 14%. Средняя
+# оценка таких кандидатов 0.06, и ни один из них не попал в топ-15: по фразе, которой
+# никто не пишет, публикаций не найти, и модель ранжирует их вслепую.
+MAX_NAME_WORDS = 4
+
+
 def _is_usable(name: str) -> bool:
     """Отсеять пустое, слишком общее и похожее на название продукта — такое кандидатом быть не может."""
     words = name.split()
-    if not (1 <= len(words) <= 8):
+    if not (1 <= len(words) <= MAX_NAME_WORDS):
+        log.info("extract_candidates: «%s» — это описание, а не термин, пропускаю", name)
         return False
     if name.lower() in _TOO_BROAD:
         log.info("extract_candidates: «%s» — слишком широкая область, пропускаю", name)
