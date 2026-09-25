@@ -30,10 +30,10 @@ export function ShapBars({ reasons }: { reasons: Explanation[] }) {
   return (
     <figure className="flex flex-col gap-3">
       <div
-        className="grid grid-cols-[1fr_minmax(8rem,14rem)] items-center gap-x-4 text-xs text-muted-foreground"
+        className="grid grid-cols-1 items-center gap-x-4 text-xs text-muted-foreground sm:grid-cols-[1fr_minmax(8rem,14rem)]"
         aria-hidden="true"
       >
-        <span />
+        <span className="hidden sm:block" />
         <span className="grid grid-cols-2">
           <span className="pr-2 text-right">против</span>
           <span className="pl-2">за сигнал</span>
@@ -47,7 +47,7 @@ export function ShapBars({ reasons }: { reasons: Explanation[] }) {
           return (
             <li
               key={reason.feature}
-              className="grid grid-cols-[1fr_minmax(8rem,14rem)] items-center gap-x-4"
+              className="grid grid-cols-1 items-center gap-x-4 gap-y-1 sm:grid-cols-[1fr_minmax(8rem,14rem)]"
             >
               <span className="flex gap-1.5 text-sm">
                 {positive ? (

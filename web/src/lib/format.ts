@@ -232,3 +232,19 @@ export function plural(
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
   return many
 }
+
+/**
+ * Причина отказа источника без сырого URL: «406 Not Acceptable», «таймаут».
+ * Полный текст остаётся в подсказке и в JSON прогона.
+ */
+export function failureReason(detail: string): string {
+  const status =
+    /'(\d{3} [^']+)'/.exec(detail) ?? /\b(\d{3} [A-Z][A-Za-z ]+)/.exec(detail)
+  if (status) return status[1].trim()
+  if (/timeout/i.test(detail)) return "не ответил за отведённое время"
+  const short = detail
+    .split(/ for url /i)[0]
+    .replace(/^\w+Error:\s*/, "")
+    .trim()
+  return short.length > 80 ? `${short.slice(0, 80)}…` : short || "без описания"
+}

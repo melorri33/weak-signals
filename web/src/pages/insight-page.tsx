@@ -87,8 +87,8 @@ export function InsightPage() {
         ) : null}
       </header>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="flex max-w-[44rem] flex-col gap-10">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="flex max-w-[44rem] min-w-0 flex-col gap-10">
           {hasOnlyLowTrust(card) ? (
             <Alert>
               <TriangleAlertIcon />
@@ -236,7 +236,7 @@ function SignalPassport({
     }))
     .filter((c) => c.n > 0)
   return (
-    <aside className="h-fit lg:sticky lg:top-6">
+    <aside className="order-first h-fit lg:sticky lg:top-6 lg:order-none">
       <div className="flex flex-col gap-5 rounded-xl border bg-card p-5">
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">Уверенность модели</p>

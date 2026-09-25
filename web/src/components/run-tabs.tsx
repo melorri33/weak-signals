@@ -42,6 +42,7 @@ import {
   REASON_MEANING,
   REASON_ORDER,
   displayName,
+  failureReason,
   formatDuration,
   formatNumber,
   hasOnlyLowTrust,
@@ -112,8 +113,8 @@ function SignalRow({
     .slice(0, KEY_PREDICTORS)
   const href = `/run/${runId}/signal/${encodeURIComponent(card.candidate_id)}`
   return (
-    <TableRow className="relative align-top">
-      <TableCell className="pt-4 pl-4 text-right text-muted-foreground">
+    <TableRow className="relative">
+      <TableCell className="pl-4 text-right text-muted-foreground">
         {rank}
       </TableCell>
       <TableCell className="max-w-72 py-3 whitespace-normal">
@@ -538,17 +539,21 @@ export function SourceFailures({
         Не все источники ответили: {total}{" "}
         {plural(total, "отказ", "отказа", "отказов")}
       </AlertTitle>
-      <AlertDescription>
+      <AlertDescription className="min-w-0">
         <p>
           Поиск продолжился без них. Признаки части кандидатов посчитаны по
           неполным данным.
         </p>
         <ul className="mt-1 flex flex-col gap-0.5">
           {failures.map((f) => (
-            <li key={f.source}>
-              <span className="font-medium text-foreground">{f.source}</span>
-              {f.count && f.count > 1 ? `, ${f.count} раз` : ""}
-              {f.detail ? `: ${f.detail}` : ""}
+            <li key={f.source} className="break-words" title={f.detail}>
+              <span className="font-medium text-foreground" translate="no">
+                {f.source}
+              </span>
+              {f.count && f.count > 1
+                ? `, ${f.count} ${plural(f.count, "раз", "раза", "раз")}`
+                : ""}
+              {f.detail ? `: ${failureReason(f.detail)}` : ""}
             </li>
           ))}
         </ul>

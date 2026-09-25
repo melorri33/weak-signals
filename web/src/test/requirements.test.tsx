@@ -14,7 +14,12 @@ import {
   TopSignals,
 } from "@/components/run-tabs"
 import { SourcesList } from "@/components/sources-list"
-import { CONFIDENT_THRESHOLD, confidenceLevel, plural } from "@/lib/format"
+import {
+  CONFIDENT_THRESHOLD,
+  confidenceLevel,
+  failureReason,
+  plural,
+} from "@/lib/format"
 import { InsightPage } from "@/pages/insight-page"
 import { exampleRun, renderWithApp } from "./render"
 
@@ -209,5 +214,16 @@ describe("мелочи, на которых легко ошибиться", () =
       "источник",
       "источника",
     ])
+  })
+
+  it("причина отказа источника — без сырого URL", () => {
+    expect(
+      failureReason(
+        "HTTPStatusError: Client error '406 Not Acceptable' for url 'https://export.arxiv.org/api/query?x'"
+      )
+    ).toBe("406 Not Acceptable")
+    expect(failureReason("ReadTimeout: ")).toBe(
+      "не ответил за отведённое время"
+    )
   })
 })
