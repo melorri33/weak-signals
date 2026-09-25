@@ -50,6 +50,7 @@ async def test_finished_domain_is_not_run_again(tmp_path: Path, fake_pipeline: l
     assert await cm.run_model("ollama", "qwen3:4b", domains, tmp_path) == 1
     assert fake_pipeline == ["запрос 2"]  # упавший с ошибкой прогон считается заново
     assert (out / "Роботы.json").exists()
+    assert cm.load_rows(tmp_path)[0].model == "ollama:qwen3:4b"  # в отчёте — настоящее имя модели
 
 
 async def test_model_without_key_is_skipped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

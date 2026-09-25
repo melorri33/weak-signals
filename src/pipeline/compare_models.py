@@ -40,6 +40,7 @@ REPORT_PATH = DATA / "model_compare.md"
 NO_TEXT_PREFIX = "Описание не сформировано"
 # Шаги журнала моделей, где работает не языковая модель: классификатор и модель названий.
 NOT_LLM_STEPS = {"score", "name_model"}
+MODEL_FILE = "model.txt"
 
 
 def parse_spec(spec: str) -> tuple[str, str]:
@@ -75,6 +76,8 @@ async def run_model(provider: str, model: str, domains: dict[str, str], root: Pa
         return 0
     out = run_dir(provider, model, root)
     out.mkdir(parents=True, exist_ok=True)
+    # Имя папки без двоеточий (qwen3-4b), а в отчёт — настоящее имя модели (qwen3:4b).
+    (out / MODEL_FILE).write_text(f"{provider}:{model}", encoding="utf-8")
     done = 0
     for domain, query in domains.items():
         path = out / f"{domain}.json"
@@ -156,7 +159,8 @@ def row_for(model: str, domain: str, result: SearchResult, reference=None) -> Ro
 def load_rows(root: Path = RUNS_DIR, reference=None) -> list[Row]:
     rows = []
     for path in sorted(root.glob("*__*/*.json")):
-        model = path.parent.name.replace("__", ":", 1)
+        label = path.parent / MODEL_FILE
+        model = label.read_text(encoding="utf-8") if label.exists() else path.parent.name.replace("__", ":", 1)
         result = SearchResult.model_validate_json(path.read_text(encoding="utf-8"))
         rows.append(row_for(model, path.stem, result, reference))
     return rows
@@ -185,7 +189,7 @@ def report_md(rows: list[Row]) -> str:
         "## Итог по моделям",
         "",
         "| Модель | Областей | Совпало в топ-15 | Совпало среди оценённых | В топе | Уверенных "
-        "| Карточек без текста | Время, мин | Время LLM, мин |",
+        "| Карточек без текста | Время, мин | Сумма вызовов LLM, мин |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for model in dict.fromkeys(r.model for r in rows):
