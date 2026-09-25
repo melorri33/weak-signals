@@ -20,6 +20,7 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from src.api.evidence import RunEvidence
 from src.api.runs import RunRegistry, TooManyRuns
 from src.api.saved_runs import RunSummary
 from src.common.config import get_settings
@@ -85,6 +86,18 @@ def get_search(run_id: str) -> SearchResult:
     if result is None:
         raise HTTPException(status_code=404, detail=f"Прогон {run_id} не найден")
     return result
+
+
+@app.get("/search/{run_id}/evidence", response_model=RunEvidence)
+def get_evidence(run_id: str) -> RunEvidence:
+    """Признаки и публикации по годам для всех кандидатов прогона — для карты сигналов и графиков."""
+    item = registry.get_evidence(run_id)
+    if item is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Для прогона {run_id} признаки не сохранены: прогон старше карты сигналов или ещё идёт",
+        )
+    return item
 
 
 @app.get("/runs", response_model=list[RunSummary])
