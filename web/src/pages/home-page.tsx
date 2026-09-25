@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 
 import { api, type RunSummary } from "@/api/client"
+import { useEvidence, useRun } from "@/api/queries"
+import { SignalMap } from "@/components/signal-map"
 import { RunStatusBadge } from "@/components/run-status"
 import { SearchForm } from "@/components/search-form"
 import {
@@ -47,6 +49,7 @@ export function HomePage() {
         </section>
         <HowItWorks />
       </div>
+      <LatestMap />
       <RecentRuns />
     </div>
   )
@@ -92,6 +95,39 @@ function HowItWorks() {
           </li>
         ))}
       </ol>
+    </section>
+  )
+}
+
+/** Карта последнего готового поиска — главное, что умеет сервис, видно до первого клика. */
+function LatestMap() {
+  const { data: runs } = useQuery({ queryKey: ["runs"], queryFn: api.listRuns })
+  const latest = runs?.find((r) => r.status === "done")
+  if (!latest) return null
+  return <LatestMapFor run={latest} />
+}
+
+function LatestMapFor({ run }: { run: RunSummary }) {
+  const { data: evidence } = useEvidence(run.run_id, false)
+  const { data: result } = useRun(run.run_id)
+  if (!evidence || !result) return null
+  return (
+    <section
+      aria-labelledby="latest-map"
+      className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:p-6"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="latest-map" className="text-lg font-semibold">
+          Последний поиск на карте
+        </h2>
+        <Link
+          to={`/run/${run.run_id}`}
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Открыть выдачу по запросу «{run.query}»
+        </Link>
+      </div>
+      <SignalMap result={result} evidence={evidence} compact />
     </section>
   )
 }

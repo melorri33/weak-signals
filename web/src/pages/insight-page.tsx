@@ -31,12 +31,14 @@ import {
   analyticalSources,
 } from "@/lib/format"
 import { NotFoundPage } from "@/pages/not-found-page"
-import { useRun } from "@/api/queries"
+import { useEvidence, useRun } from "@/api/queries"
+import { PubDynamics } from "@/components/pub-dynamics"
 
 /** Инсайт — страница, похожая на документ-отчёт (ТЗ, раздел 7.2). Печатается в PDF как есть. */
 export function InsightPage() {
   const { runId = "", candidateId = "" } = useParams()
   const { data: result, isPending, error } = useRun(runId)
+  const { data: evidence } = useEvidence(runId, false)
   const top = result?.top ?? []
   const rank = top.findIndex((c) => c.candidate_id === candidateId)
   useArrowKeys(runId, top, rank)
@@ -53,6 +55,9 @@ export function InsightPage() {
     return <NotFoundPage title="Поиск не найден" description={error.message} />
 
   const card = top[rank]
+  const dynamics = evidence?.candidates?.find(
+    (c) => c.candidate_id === candidateId
+  )
   if (!card) {
     return (
       <NotFoundPage
@@ -132,6 +137,14 @@ export function InsightPage() {
           <ReportSection title="Почему это слабый сигнал">
             <Prose text={card.why_weak_signal} />
           </ReportSection>
+          {dynamics ? (
+            <ReportSection
+              title="Динамика публикаций"
+              lead="Измеренные числа, по которым модель судит о стадии технологии."
+            >
+              <PubDynamics item={dynamics} />
+            </ReportSection>
+          ) : null}
           <ReportSection
             title="Почему такая уверенность"
             lead={`Итоговая уверенность ${percent(card.score)}: ${CONFIDENCE_TEXT[confidenceLevel(card.score)].toLowerCase()}. Ниже — признаки, которые сильнее всего повлияли на оценку.`}

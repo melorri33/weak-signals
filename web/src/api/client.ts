@@ -18,6 +18,8 @@ export type ModelCall = Schemas["ModelCall"]
 export type SourceFailure = Schemas["SourceFailure"]
 export type RunSummary = Schemas["RunSummary"]
 export type Health = Schemas["Health"]
+export type RunEvidence = Schemas["RunEvidence"]
+export type CandidateEvidence = Schemas["CandidateEvidence"]
 export type TrustLevel = Schemas["TrustLevel"]
 export type SourceType = Schemas["SourceType"]
 export type ReasonCode = FilterDecision["reason_code"]
@@ -74,6 +76,17 @@ export const api = {
   getRun: (runId: string) =>
     request<SearchResult>(`/search/${encodeURIComponent(runId)}`),
   listRuns: () => request<RunSummary[]>("/runs"),
+  /** Признаки кандидатов. У прогонов старше карты сигналов их нет — это не ошибка, а null. */
+  getEvidence: async (runId: string): Promise<RunEvidence | null> => {
+    try {
+      return await request<RunEvidence>(
+        `/search/${encodeURIComponent(runId)}/evidence`
+      )
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null
+      throw error
+    }
+  },
   health: () => request<Health>("/health"),
 }
 
