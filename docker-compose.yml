@@ -83,6 +83,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Веб-интерфейс на React (ТЗ: React + FastAPI). nginx отдаёт сборку и проксирует /api в api.
+  web:
+    build: ./web
+    image: weak-signals-web
+    container_name: weak-signals-web
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
   # Локальная модель в контейнере — для машины без Ollama на хосте. Включается профилем:
   #   docker compose --profile local-llm up -d
   #   docker compose exec ollama ollama pull qwen3:8b

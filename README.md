@@ -129,6 +129,7 @@ uvicorn src.api.main:app --reload
 | `POST /search` `{"query": "..."}` | запускает прогон, отвечает `202` и `SearchResult` со `status='running'` |
 | `GET /search/{run_id}` | текущее состояние: `stage` — шаг конвейера, `status='done'` — выдача готова |
 | `GET /signal/{run_id}/{candidate_id}` | карточка одного сигнала из выдачи |
+| `GET /runs` | последние прогоны: идущий и готовые, свежие первыми |
 
 ```bash
 curl -s localhost:8000/health
@@ -141,9 +142,37 @@ curl -s localhost:8000/search/$run | python -m json.tool | head -20
 машину в swap. Пока прогон не закончился, второй `POST /search` отвечает `429` с номером текущего.
 Документация эндпоинтов со схемами — на `/docs`.
 
+Готовый прогон API сохраняет в `data/search_runs/{run_id}.json` — туда же, куда Streamlit и проверка
+«как у жюри». Поэтому готовые прогоны открываются и после перезапуска сервера, даже без базы.
+
+### 6. Веб-интерфейс
+
+Основной интерфейс — React (`web/`) поверх API. Нужен Node.js 20+.
+
+```bash
+uvicorn src.api.main:app            # API на :8000 — интерфейс ходит в него через /api
+cd web
+npm install
+npm run dev                         # http://localhost:5173
+```
+
+| Экран | Что на нём |
+| --- | --- |
+| Главная | строка запроса, примеры из ТЗ, последние поиски, состояние модели |
+| Поиск | пока идёт — шаги конвейера и счётчики; потом воронка отсева, топ-15, отсеянное с причиной, все кандидаты, журнал моделей |
+| Инсайт | отчёт по сигналу: описание, преимущество, кейс, оценки в отчётах, почему слабый сигнал, вклад признаков (SHAP), источники; печать в PDF |
+
+| Команда (в `web/`) | Что делает |
+| --- | --- |
+| `npm test` | тесты требований ТЗ к интерфейсу на фикстуре прогона |
+| `npm run lint`, `npm run typecheck` | проверки перед коммитом |
+| `npm run gen:api` | пересобрать типы `src/api/schema.d.ts` из OpenAPI (после правок `src/common/schemas.py`, API должен быть запущен) |
+
+Streamlit (`streamlit run src/ui/app.py`) остаётся запасным интерфейсом.
+
 ## Запуск в Docker
 
-Всё приложение целиком — база, API и интерфейс:
+Всё приложение целиком — база, API и оба интерфейса:
 
 ```bash
 cp .env.example .env            # заполни доступы к модели
@@ -154,7 +183,8 @@ docker compose ps               # db и api — healthy
 | Что | Где |
 | --- | --- |
 | API | http://localhost:8000 (документация — `/docs`) |
-| Интерфейс | http://localhost:8501 |
+| **Веб-интерфейс** | **http://localhost:3000** (nginx отдаёт сборку и проксирует `/api` в `api`) |
+| Интерфейс Streamlit (запасной) | http://localhost:8501 |
 | База | `localhost:5432`, том `db-data` |
 | Прогоны и кэш ответов модели | папка `./data` на хосте, общая у `api` и `ui` |
 
@@ -188,6 +218,7 @@ pytest -m "not network"        # офлайн-тесты на фикстурах
 pytest -m network              # тесты, которым нужны Ollama и интернет
 pytest -m network -k cloud     # живой вызов облака; пропускается, пока в .env нет ключей
 ruff format . && ruff check .  # перед коммитом
+cd web && npm test && npm run lint   # веб-интерфейс
 ```
 
 ## Настройки
@@ -202,7 +233,7 @@ ruff format . && ruff check .  # перед коммитом
 | `OLLAMA_URL_IN_DOCKER` | адрес Ollama для контейнеров | `http://host.docker.internal:11434` |
 | `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | доступ к облаку при `LLM_PROVIDER=yandexgpt` | пусто |
 | `LLM_CACHE` | кэшировать ответы модели в `data/llm_cache` (`0` — выключить) | `1` |
-| `API_PORT`, `UI_PORT` | порты API и интерфейса на хосте | `8000`, `8501` |
+| `API_PORT`, `UI_PORT`, `WEB_PORT` | порты API, Streamlit и веб-интерфейса на хосте | `8000`, `8501`, `3000` |
 | `EMBED_MODEL` | модель эмбеддингов для склейки кандидатов | `BAAI/bge-m3` |
 | `DATABASE_URL` | подключение к PostgreSQL | `postgresql+psycopg://weak:weak@localhost:5432/weak_signals` |
 | `MAX_DOCUMENTS` | сколько документов собираем максимум | `500` |
@@ -216,7 +247,8 @@ src/collectors/  открытые источники            src/storage/   P
 src/features/    признаки кандидатов           src/model/     обучение, скоринг, SHAP
 src/trust/       уровни доверия к источникам   src/filters/   отсев зрелого, хайпа, шума
 src/llm/         клиент, провайдеры, промпты   src/pipeline/  конвейер и CLI
-src/api/         FastAPI                       src/ui/        Streamlit
+src/api/         FastAPI                       src/ui/        Streamlit (запасной интерфейс)
+web/             веб-интерфейс: React, Vite, shadcn/ui; Dockerfile и nginx.conf для стенда
 ```
 
 ## Если что-то не работает
@@ -229,7 +261,7 @@ src/api/         FastAPI                       src/ui/        Streamlit
 | Прогон падает на `db` | база не нужна для CLI; если нужна — `docker compose up -d db` |
 | Прогон идёт дольше 5 минут | выгрузи лишние модели (`ollama stop qwen3:4b`) или поставь `LLM_MODEL=qwen3:4b` |
 | API отвечает `429` | прогон уже идёт, номер текущего — в тексте ошибки; дождись его или посмотри `GET /health` |
-| В `GET /health` `database_available: false` | `docker compose up -d db`; без базы прогоны живут только в памяти сервера |
+| В `GET /health` `database_available: false` | `docker compose up -d db`; без базы готовые прогоны сохраняются только в `data/search_runs` |
 | В контейнере `llm_available: false`, а на хосте модель работает | проверь `OLLAMA_URL_IN_DOCKER`: для Ollama на хосте это `http://host.docker.internal:11434`, для сервиса из профиля — `http://ollama:11434` |
 | `Провайдер '…' не поддерживается` | в `LLM_PROVIDER` опечатка: бывает `ollama` или `yandexgpt` |
 | `Модель '…' не из списка ТЗ` | облачные модели разрешены только из перечня организаторов — смотри список в тексте ошибки |

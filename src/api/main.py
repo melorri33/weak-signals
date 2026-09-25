@@ -122,7 +122,7 @@ async def health() -> Health:
     # to_thread: проверка базы блокирующая (до 2 с на таймаут подключения), а цикл событий занят прогоном.
     database_available = await asyncio.to_thread(deps.database_ok)
     if not database_available:
-        notes.append("База недоступна: прогоны живут только в памяти и не переживут перезапуск сервера")
+        notes.append("База недоступна: готовые прогоны сохраняются только в файлы data/search_runs")
     return Health(
         status="ok" if llm_available and database_available else "degraded",
         llm_model=settings.llm_model,

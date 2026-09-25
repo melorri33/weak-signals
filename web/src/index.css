@@ -1,0 +1,229 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/onest";
+@import "@fontsource/literata/400.css";
+@import "@fontsource/literata/400-italic.css";
+@import "@fontsource/literata/600.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Onest Variable", system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-serif: "Literata", Georgia, serif;
+
+  /* Три тона шкалы: уверенность модели и доверие к источнику говорят на одном языке. */
+  --color-level-high: var(--level-high);
+  --color-level-high-soft: var(--level-high-soft);
+  --color-level-mid: var(--level-mid);
+  --color-level-mid-soft: var(--level-mid-soft);
+  --color-level-low: var(--level-low);
+  --color-level-low-soft: var(--level-low-soft);
+  --color-paper: var(--paper);
+  /* Вклады SHAP: полярность «за / против». Пара проверена на дальтонизм (dataviz validate_palette). */
+  --color-shap-for: var(--shap-for);
+  --color-shap-against: var(--shap-against);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: #f6f5f9;
+  --foreground: #1b1530;
+  --card: #ffffff;
+  --card-foreground: #1b1530;
+  --popover: #ffffff;
+  --popover-foreground: #1b1530;
+  --paper: #ffffff;
+  --primary: #5a2a9c;
+  --primary-foreground: #ffffff;
+  --secondary: #ece8f4;
+  --secondary-foreground: #2e2250;
+  --muted: #eeecf3;
+  --muted-foreground: #625b78;
+  --accent: #efe9f8;
+  --accent-foreground: #3d1d6b;
+  --destructive: #b3261e;
+  --border: #e0dce9;
+  --input: #d6d1e2;
+  --ring: #7c4fc4;
+  --chart-1: #5a2a9c;
+  --chart-2: #9a8fb3;
+  --radius: 0.5rem;
+
+  --level-high: #0f7a5f;
+  --level-high-soft: #e3f2ec;
+  --level-mid: #946010;
+  --level-mid-soft: #f7eddb;
+  --level-low: #9a3b3b;
+  --level-low-soft: #f6e5e3;
+
+  --shap-for: #6a3bb0;
+  --shap-against: #c0661c;
+}
+
+.dark {
+  --background: #13101c;
+  --foreground: #ebe8f3;
+  --card: #1b1727;
+  --card-foreground: #ebe8f3;
+  --popover: #221d31;
+  --popover-foreground: #ebe8f3;
+  --paper: #1b1727;
+  --primary: #b79cf2;
+  --primary-foreground: #1b1036;
+  --secondary: #2a2340;
+  --secondary-foreground: #e2dbf3;
+  --muted: #241f33;
+  --muted-foreground: #a39cb8;
+  --accent: #2c2445;
+  --accent-foreground: #e2dbf3;
+  --destructive: #f2877e;
+  --border: #302a43;
+  --input: #3a3350;
+  --ring: #9c7ee6;
+  --chart-1: #b79cf2;
+  --chart-2: #6c6485;
+
+  --level-high: #5fcca6;
+  --level-high-soft: #16302a;
+  --level-mid: #e2b15e;
+  --level-mid-soft: #33291a;
+  --level-low: #ee918a;
+  --level-low-soft: #3a2124;
+
+  --shap-for: #9677dd;
+  --shap-against: #c97a30;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "tnum" 1;
+    touch-action: manipulation;
+  }
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  html {
+    @apply font-sans;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Подробный отчёт от модели приходит в markdown: минимальная типографика без плагинов. */
+.report-md {
+  & h1,
+  & h2,
+  & h3 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    margin: 1.5em 0 0.5em;
+  }
+  & h1 {
+    font-size: 1.25rem;
+  }
+  & h2 {
+    font-size: 1.125rem;
+  }
+  & h3 {
+    font-size: 1rem;
+  }
+  & p,
+  & ul,
+  & ol {
+    margin: 0 0 0.9em;
+  }
+  & ul {
+    list-style: disc;
+    padding-left: 1.25em;
+  }
+  & ol {
+    list-style: decimal;
+    padding-left: 1.25em;
+  }
+  & a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  & strong {
+    font-weight: 600;
+  }
+}
+
+/* Инсайт печатается как отчёт: без шапки и навигации, на белом даже из тёмной темы. */
+@media print {
+  @page {
+    margin: 16mm 14mm;
+  }
+  :root,
+  .dark {
+    color-scheme: light;
+    --background: #fff;
+    --foreground: #111;
+    --card: #fff;
+    --card-foreground: #111;
+    --paper: #fff;
+    --muted: #f2f2f2;
+    --muted-foreground: #555;
+    --border: #d9d9d9;
+    --primary: #5a2a9c;
+    --level-high: #0f7a5f;
+    --level-high-soft: #e3f2ec;
+    --level-mid: #946010;
+    --level-mid-soft: #f7eddb;
+    --level-low: #9a3b3b;
+    --level-low-soft: #f6e5e3;
+    --shap-for: #6a3bb0;
+    --shap-against: #c0661c;
+  }
+  [data-print="hide"] {
+    display: none !important;
+  }
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    word-break: break-all;
+  }
+}
