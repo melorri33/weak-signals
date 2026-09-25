@@ -143,7 +143,10 @@ async def run(
 
     progress("отсев и скоринг")
     kept, features_kept = _apply_filters(candidates, features, result)
-    scored = _score(kept, features_kept)
+    # В потоке, а не в цикле событий: модель названий грузит bge-m3 с диска (а в первый раз качает ~2 ГБ)
+    # и считает эмбеддинги на процессоре. Внутри цикла это минутами блокировало API — интерфейс не мог
+    # даже узнать шаг прогона. Журнал моделей не теряется: to_thread копирует контекст с тем же списком.
+    scored = await asyncio.to_thread(_score, kept, features_kept)
 
     result.scored = scored
 

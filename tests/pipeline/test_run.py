@@ -178,6 +178,31 @@ async def test_fallback_ranking_when_model_fails(monkeypatch: pytest.MonkeyPatch
     assert documents_per_card == sorted(documents_per_card, reverse=True)
 
 
+async def test_scoring_runs_off_the_event_loop_and_keeps_model_log(monkeypatch: pytest.MonkeyPatch):
+    """Оценка идёт в потоке: модель названий грузит bge-m3 минутами, и в цикле событий это вешало весь API.
+
+    Вызов модели, записанный из потока, должен остаться в журнале прогона.
+    """
+    import threading
+
+    from src.common.logs import model_timer
+    from src.model import score as real_score
+
+    loop_thread = threading.get_ident()
+    seen: list[int] = []
+
+    def recording_score(candidates, features):
+        seen.append(threading.get_ident())
+        with model_timer(step="score_probe", model="probe", provider="local"):
+            return real_score(candidates, features)
+
+    monkeypatch.setattr("src.pipeline.run.score", recording_score)
+    result = await run("перспективные решения в финтехе")
+
+    assert seen and seen[0] != loop_thread, "оценка должна выполняться вне потока цикла событий"
+    assert any(call.step == "score_probe" for call in result.model_calls)
+
+
 async def test_scored_field_is_filled():
     """В SearchResult.scored попадают все кандидаты после отсева, по убыванию уверенности."""
     result = await run("перспективные решения в финтехе")
