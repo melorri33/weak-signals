@@ -5,9 +5,11 @@
 
 Работаем через OpenAI-совместимый эндпоинт Yandex AI Studio: тело запроса и ответа такие же, как
 у OpenAI, а авторизация — по ключу API (`Authorization: Api-Key …`) с идентификатором каталога
-в заголовке `OpenAI-Project`. Структурированный ответ — `response_format.json_schema`, поэтому
-проверка схемой работает так же, как у Ollama.
-Документация: https://aistudio.yandex.ru/docs/ru/ai-studio/operations/generation/completions-structured
+в заголовке `OpenAI-Project`.
+
+Структурированный ответ (`response_format.json_schema`) не используем: YandexGPT Lite в этом режиме
+ломает ключи на вложенных списках, и выделение кандидатов не проходило ни разу (ночной прогон 26.09).
+Схема уходит текстом в системное сообщение (src/llm/providers/schema_text.py).
 
 Что нужно в .env:
     LLM_PROVIDER=yandexgpt
@@ -26,6 +28,7 @@ import httpx
 from src.common.config import get_settings
 from src.common.logs import get_logger
 from src.llm.errors import LLMError
+from src.llm.providers.schema_text import strip_fence, with_schema
 
 log = get_logger(__name__)
 
@@ -89,6 +92,8 @@ class YandexGPTBackend:
         max_tokens: int,
         timeout_s: float,
     ) -> str:
+        if json_schema is not None:
+            messages = with_schema(messages, json_schema)
         body: dict[str, Any] = {
             "model": self.model_uri,
             "messages": messages,
@@ -96,11 +101,6 @@ class YandexGPTBackend:
             "temperature": TEMPERATURE,
             "max_tokens": max_tokens,
         }
-        if json_schema is not None:
-            body["response_format"] = {
-                "type": "json_schema",
-                "json_schema": {"name": "answer", "schema": json_schema},
-            }
         data = await self._post(body, timeout_s)
         choices = data.get("choices") or []
         if not choices:
@@ -108,7 +108,8 @@ class YandexGPTBackend:
         choice = choices[0]
         if choice.get("finish_reason") == "length":
             log.warning("%s: ответ обрезан по max_tokens=%d — возможно, не пройдёт схему", self.model, max_tokens)
-        return (choice.get("message") or {}).get("content", "")
+        content = (choice.get("message") or {}).get("content", "")
+        return strip_fence(content) if json_schema is not None else content
 
     async def is_available(self) -> bool:
         """Отвечает ли облако на самый короткий запрос (для GET /health)."""
