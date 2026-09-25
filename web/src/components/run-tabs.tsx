@@ -15,7 +15,7 @@ import type {
   SignalCard,
   SourceFailure,
 } from "@/api/client"
-import { ConfidenceBadge, ConfidenceBar, TrustDots } from "@/components/levels"
+import { ConfidenceBar, ConfidenceScore, TrustDots } from "@/components/levels"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -76,7 +76,7 @@ export function TopSignals({ result }: { result: SearchResult }) {
           <TableRow>
             <TableHead className="w-10 pl-4 text-right">№</TableHead>
             <TableHead>Технология</TableHead>
-            <TableHead className="w-44">Уверенность модели</TableHead>
+            <TableHead className="w-40">Уверенность модели</TableHead>
             <TableHead>Ключевые предикторы</TableHead>
             <TableHead className="w-28">Источники</TableHead>
             <TableHead className="w-36 pr-4">
@@ -138,10 +138,7 @@ function SignalRow({
         </div>
       </TableCell>
       <TableCell className="py-3">
-        <div className="flex flex-col gap-2">
-          <ConfidenceBadge score={card.score} />
-          <ConfidenceBar score={card.score} className="max-w-36" />
-        </div>
+        <ConfidenceScore score={card.score} />
       </TableCell>
       <TableCell className="py-3 whitespace-normal">
         <ul className="flex flex-col gap-1 text-sm">
@@ -520,6 +517,40 @@ function summarizeCalls(calls: ModelCall[]) {
     rows.set(key, row)
   }
   return [...rows.values()]
+}
+
+/**
+ * Отказы одной строкой над выдачей: честно, но без тревоги — поиск прошёл, просто по неполным данным.
+ * Подробности — на вкладке «Как считали».
+ */
+export function SourceFailuresNote({
+  failures,
+  onDetails,
+}: {
+  failures: SourceFailure[]
+  onDetails: () => void
+}) {
+  if (failures.length === 0) return null
+  const total = failures.reduce((sum, f) => sum + (f.count ?? 1), 0)
+  return (
+    <p className="flex items-start gap-2 text-sm text-muted-foreground">
+      <TriangleAlertIcon
+        className="mt-0.5 size-4 shrink-0"
+        aria-hidden="true"
+      />
+      <span>
+        {total} {plural(total, "отказ", "отказа", "отказов")} источников: поиск
+        продолжился без них.{" "}
+        <button
+          type="button"
+          onClick={onDetails}
+          className="font-medium text-foreground underline underline-offset-4 hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          Подробнее
+        </button>
+      </span>
+    </p>
+  )
 }
 
 /** Отказ источника не валит прогон, поэтому его надо показать: иначе выдача выглядит полной. */

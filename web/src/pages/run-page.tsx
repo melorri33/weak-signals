@@ -9,6 +9,7 @@ import {
   ExcludedList,
   MethodPanel,
   SourceFailures,
+  SourceFailuresNote,
   TopSignals,
 } from "@/components/run-tabs"
 import { StageProgress } from "@/components/stage-progress"
@@ -16,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatDateTime, formatDuration } from "@/lib/format"
+import { TOP_N, formatDateTime, formatDuration, plural } from "@/lib/format"
 import { NotFoundPage } from "@/pages/not-found-page"
 
 const TABS: RunTab[] = ["top", "excluded", "candidates", "method"]
@@ -76,7 +77,11 @@ function RunHeader({ result }: { result: SearchResult }) {
           </p>
         </div>
         {result.status === "done" ? (
-          <Button variant="outline" onClick={() => downloadJson(result)}>
+          <Button
+            variant="outline"
+            onClick={() => downloadJson(result)}
+            data-present="hide"
+          >
             <DownloadIcon data-icon="inline-start" />
             Скачать JSON
           </Button>
@@ -98,23 +103,28 @@ function RunResult({ result }: { result: SearchResult }) {
     })
   }
 
+  function open(next: RunTab) {
+    select(next)
+    document
+      .getElementById("run-tabs")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
   return (
-    <div className="flex flex-col gap-8">
-      <Funnel
-        result={result}
-        onSelect={(next) => {
-          select(next)
-          document
-            .getElementById("run-tabs")
-            ?.scrollIntoView({ behavior: "smooth", block: "start" })
-        }}
-      />
-      <SourceFailures failures={result.source_failures ?? []} />
+    <div className="flex flex-col gap-6">
+      <Verdict result={result} />
+      <Funnel result={result} onSelect={open} />
+      <div data-present="hide">
+        <SourceFailuresNote
+          failures={result.source_failures ?? []}
+          onDetails={() => open("method")}
+        />
+      </div>
       <Tabs
         id="run-tabs"
         value={tab}
         onValueChange={(value) => select(value as RunTab)}
-        className="scroll-mt-6 gap-5"
+        className="mt-2 scroll-mt-6 gap-5"
       >
         <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <TabsList variant="line" className="h-10">
@@ -145,6 +155,30 @@ function RunResult({ result }: { result: SearchResult }) {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+/**
+ * Итог одной фразой. Если в выдаче меньше 15, говорим почему — иначе неполный топ выглядит как сбой.
+ */
+function Verdict({ result }: { result: SearchResult }) {
+  const top = result.top?.length ?? 0
+  const confident = result.confident_signals ?? 0
+  if (top === 0) return null
+  return (
+    <p className="max-w-3xl text-lg text-pretty">
+      {top} {plural(top, "сигнал", "сигнала", "сигналов")} в выдаче
+      {confident > 0
+        ? `, из них ${confident} ${plural(confident, "уверенный", "уверенных", "уверенных")}.`
+        : ", уверенных среди них нет."}
+      {top < TOP_N ? (
+        <span className="text-muted-foreground">
+          {" "}
+          Топ-{TOP_N} заполнен не целиком: подтверждающие документы нашлись не
+          для всех кандидатов, а без документов сигнал в выдачу не попадает.
+        </span>
+      ) : null}
+    </p>
   )
 }
 

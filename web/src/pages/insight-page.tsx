@@ -1,9 +1,16 @@
-import { ArrowLeftIcon, PrinterIcon, TriangleAlertIcon } from "lucide-react"
+import { useEffect } from "react"
+import {
+  ArrowLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PrinterIcon,
+  TriangleAlertIcon,
+} from "lucide-react"
 import Markdown from "react-markdown"
-import { Link, useParams } from "react-router"
+import { Link, useNavigate, useParams } from "react-router"
 
 import type { SignalCard, SourceRef } from "@/api/client"
-import { ConfidenceBar, TrustBadge } from "@/components/levels"
+import { ConfidenceBar, TrustComposition } from "@/components/levels"
 import { ShapBars } from "@/components/shap-bars"
 import { SourcesList } from "@/components/sources-list"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -30,6 +37,9 @@ import { useRun } from "@/api/queries"
 export function InsightPage() {
   const { runId = "", candidateId = "" } = useParams()
   const { data: result, isPending, error } = useRun(runId)
+  const top = result?.top ?? []
+  const rank = top.findIndex((c) => c.candidate_id === candidateId)
+  useArrowKeys(runId, top, rank)
 
   if (isPending) {
     return (
@@ -42,8 +52,6 @@ export function InsightPage() {
   if (error)
     return <NotFoundPage title="Поиск не найден" description={error.message} />
 
-  const top = result.top ?? []
-  const rank = top.findIndex((c) => c.candidate_id === candidateId)
   const card = top[rank]
   if (!card) {
     return (
@@ -67,10 +75,18 @@ export function InsightPage() {
           <ArrowLeftIcon className="size-4 shrink-0" aria-hidden="true" />
           <span className="truncate">К выдаче по запросу «{result.query}»</span>
         </Link>
-        <Button variant="outline" onClick={() => window.print()}>
-          <PrinterIcon data-icon="inline-start" />
-          Печать или PDF
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <SignalPager runId={runId} top={top} rank={rank} />
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            data-present="hide"
+          >
+            <PrinterIcon data-icon="inline-start" />
+            <span className="hidden sm:inline">Печать или PDF</span>
+            <span className="sr-only sm:hidden">Печать или PDF</span>
+          </Button>
+        </div>
       </div>
 
       <header className="flex flex-col gap-3 border-b pb-8">
@@ -229,18 +245,12 @@ function SignalPassport({
   total: number
 }) {
   const level = confidenceLevel(card.score)
-  const trustCounts = (["high", "medium", "low"] as const)
-    .map((trust) => ({
-      trust,
-      n: card.sources.filter((s) => s.trust === trust).length,
-    }))
-    .filter((c) => c.n > 0)
   return (
     <aside className="order-first h-fit lg:sticky lg:top-6 lg:order-none">
       <div className="flex flex-col gap-5 rounded-xl border bg-card p-5">
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">Уверенность модели</p>
-          <p className="text-4xl leading-none font-semibold tracking-tight">
+          <p className="text-5xl leading-none font-semibold tracking-tight">
             {percent(card.score)}
           </p>
           <ConfidenceBar score={card.score} />
@@ -270,18 +280,100 @@ function SignalPassport({
             </dd>
           </div>
         </dl>
-        <ul className="flex flex-col gap-2">
-          {trustCounts.map(({ trust, n }) => (
-            <li
-              key={trust}
-              className="flex items-center justify-between gap-3 text-sm"
-            >
-              <TrustBadge trust={trust} />
-              <span>{n}</span>
-            </li>
-          ))}
-        </ul>
+        <TrustComposition trusts={card.sources.map((s) => s.trust)} />
       </div>
     </aside>
   )
+}
+
+function signalHref(runId: string, card: SignalCard): string {
+  return `/run/${runId}/signal/${encodeURIComponent(card.candidate_id)}`
+}
+
+/** Листать сигналы, не возвращаясь к таблице: на показе жюри так быстрее. */
+function SignalPager({
+  runId,
+  top,
+  rank,
+}: {
+  runId: string
+  top: SignalCard[]
+  rank: number
+}) {
+  const prev = top[rank - 1]
+  const next = top[rank + 1]
+  return (
+    <div className="flex items-center gap-1" aria-label="Другие сигналы">
+      <PagerButton
+        runId={runId}
+        card={prev}
+        label={prev ? `Предыдущий: ${displayName(prev)}` : "Это первый сигнал"}
+      >
+        <ChevronLeftIcon />
+      </PagerButton>
+      <span className="min-w-12 text-center text-sm text-muted-foreground">
+        {rank + 1} / {top.length}
+      </span>
+      <PagerButton
+        runId={runId}
+        card={next}
+        label={
+          next ? `Следующий: ${displayName(next)}` : "Это последний сигнал"
+        }
+      >
+        <ChevronRightIcon />
+      </PagerButton>
+    </div>
+  )
+}
+
+function PagerButton({
+  runId,
+  card,
+  label,
+  children,
+}: {
+  runId: string
+  card: SignalCard | undefined
+  label: string
+  children: React.ReactNode
+}) {
+  if (!card) {
+    return (
+      <Button variant="ghost" size="icon" disabled aria-label={label}>
+        {children}
+      </Button>
+    )
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      nativeButton={false}
+      render={<Link to={signalHref(runId, card)} />}
+      aria-label={label}
+      title={label}
+    >
+      {children}
+    </Button>
+  )
+}
+
+/** Стрелки ← → листают сигналы, если фокус не в поле ввода. */
+function useArrowKeys(runId: string, top: SignalCard[], rank: number) {
+  const navigate = useNavigate()
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.altKey || event.ctrlKey || event.metaKey) return
+      const target = event.target as HTMLElement | null
+      if (target?.closest("input, textarea, [contenteditable]")) return
+      const step =
+        event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0
+      const card = step ? top[rank + step] : undefined
+      if (rank < 0 || !card) return
+      navigate(signalHref(runId, card))
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [navigate, runId, top, rank])
 }

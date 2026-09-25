@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
-import { MoonIcon, SunIcon } from "lucide-react"
+import { useEffect, useState } from "react"
+import { MoonIcon, PresentationIcon, SunIcon } from "lucide-react"
 import { Link, Outlet, ScrollRestoration } from "react-router"
 
 import { api } from "@/api/client"
@@ -32,6 +33,7 @@ export function AppShell() {
           </Link>
           <div className="ml-auto flex items-center gap-2">
             <HealthStatus />
+            <PresentToggle />
             <ThemeToggle />
           </div>
         </div>
@@ -147,5 +149,51 @@ function ThemeToggle() {
     >
       {isDark ? <SunIcon /> : <MoonIcon />}
     </Button>
+  )
+}
+
+const PRESENT_KEY = "weak-signals:present"
+
+function readPresent(): boolean {
+  if (new URLSearchParams(window.location.search).get("show") === "1")
+    return true
+  try {
+    return window.localStorage.getItem(PRESENT_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+/** Режим показа для жюри (или ?show=1): крупнее для проектора, служебные детали скрыты. */
+function PresentToggle() {
+  const [on, setOn] = useState(readPresent)
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-present", on)
+    try {
+      window.localStorage.setItem(PRESENT_KEY, on ? "1" : "0")
+    } catch {
+      // приватное окно: режим живёт до перезагрузки
+    }
+  }, [on])
+  const label = on
+    ? "Выключить режим показа"
+    : "Режим показа: крупно, для проектора"
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant={on ? "secondary" : "ghost"}
+            size="icon"
+            onClick={() => setOn(!on)}
+            aria-label={label}
+            aria-pressed={on}
+          />
+        }
+      >
+        <PresentationIcon />
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
   )
 }

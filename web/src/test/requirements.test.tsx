@@ -59,7 +59,8 @@ describe("топ-15", () => {
     expect(rows).toHaveLength(run.top.length)
     const first = within(rows[0])
     expect(first.getByText("Пример технологии 1")).toBeInTheDocument()
-    expect(first.getByText("Высокая (91%)")).toBeInTheDocument()
+    expect(first.getByText("91%")).toBeInTheDocument()
+    expect(first.getByText("высокая")).toBeInTheDocument()
     expect(first.getByText(/публикации растут/)).toBeInTheDocument()
     expect(
       first.getByRole("link", { name: "Смотреть инсайт" })
@@ -118,6 +119,13 @@ describe("воронка", () => {
     expect(onSelect).toHaveBeenCalledWith("candidates")
   })
 
+  it("под шагом видно, сколько ушло, и клик ведёт к отсеянным", () => {
+    const onSelect = vi.fn()
+    renderWithApp(<Funnel result={exampleRun()} onSelect={onSelect} />)
+    fireEvent.click(screen.getByRole("button", { name: /отсеяно правилами/ }))
+    expect(onSelect).toHaveBeenCalledWith("excluded")
+  })
+
   it("порог уверенности совпадает с бэкендом: строго больше 0.75", () => {
     expect(confidenceLevel(CONFIDENT_THRESHOLD)).toBe("mid")
     expect(confidenceLevel(0.76)).toBe("high")
@@ -170,6 +178,26 @@ describe("инсайт", () => {
     expect(screen.getAllByTestId("source")).toHaveLength(
       run.top[0].sources.length
     )
+  })
+
+  it("сигналы листаются без возврата к таблице", async () => {
+    const run = exampleRun()
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(run), { status: 200 }))
+    )
+    renderWithApp(<InsightPage />, {
+      path: "/run/:runId/signal/:candidateId",
+      route: `/run/${run.run_id}/signal/example-tech-1`,
+    })
+    const next = await screen.findByRole("button", { name: /^Следующий:/ })
+    expect(next).toHaveAttribute(
+      "href",
+      `/run/${run.run_id}/signal/${run.top[1].candidate_id}`
+    )
+    expect(
+      screen.getByRole("button", { name: "Это первый сигнал" })
+    ).toBeDisabled()
   })
 
   it("пониженная доверенность предупреждает в начале отчёта", async () => {
