@@ -4,6 +4,7 @@
     POST /search                              → запускает прогон, сразу отдаёт run_id
     GET  /search/{run_id}                     → SearchResult: пока идёт — со stage, потом с топ-15
     GET  /signal/{run_id}/{candidate_id}      → карточка одного сигнала
+    GET  /runs                                → последние прогоны (память + data/search_runs)
     GET  /health                              → доступна ли модель и база
 
 Запуск: uvicorn src.api.main:app --reload
@@ -20,6 +21,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from src.api.runs import RunRegistry, TooManyRuns
+from src.api.saved_runs import RunSummary
 from src.common.config import get_settings
 from src.common.logs import get_logger
 from src.common.schemas import SearchResult, SignalCard
@@ -83,6 +85,12 @@ def get_search(run_id: str) -> SearchResult:
     if result is None:
         raise HTTPException(status_code=404, detail=f"Прогон {run_id} не найден")
     return result
+
+
+@app.get("/runs", response_model=list[RunSummary])
+def list_runs() -> list[RunSummary]:
+    """Последние прогоны для списка в интерфейсе: идущий и готовые, свежие первыми."""
+    return registry.summaries()
 
 
 @app.get("/signal/{run_id}/{candidate_id}", response_model=SignalCard)

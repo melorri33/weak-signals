@@ -15,6 +15,7 @@ import asyncio
 from collections import OrderedDict
 from uuid import uuid4
 
+from src.api import saved_runs
 from src.common.logs import get_logger
 from src.common.schemas import SearchResult
 from src.pipeline import deps
@@ -23,8 +24,9 @@ from src.pipeline.run import run as run_pipeline
 log = get_logger(__name__)
 
 MAX_ACTIVE_RUNS = 1
-# Сколько последних прогонов держим в памяти: без базы это единственное место, где они живут.
+# Сколько последних прогонов держим в памяти; готовые вдобавок пишутся в data/search_runs.
 KEEP_RESULTS = 20
+MAX_LISTED = 50
 
 STAGE_QUEUED = "в очереди"
 
@@ -59,9 +61,18 @@ class RunRegistry:
         return result
 
     def get(self, run_id: str) -> SearchResult | None:
-        """Снимок прогона: из памяти, иначе из базы."""
+        """Снимок прогона: из памяти, иначе из базы, иначе из файла готовых прогонов."""
         snapshot = self._snapshots.get(run_id)
-        return snapshot if snapshot is not None else deps.get_search_result(run_id)
+        if snapshot is not None:
+            return snapshot
+        return deps.get_search_result(run_id) or saved_runs.find(run_id)
+
+    def summaries(self, limit: int = MAX_LISTED) -> list[saved_runs.RunSummary]:
+        """Последние прогоны: этого процесса и сохранённые на диске, свежие первыми."""
+        by_id = {r.run_id: saved_runs.summarize(r) for r in saved_runs.load_all()}
+        # Память важнее файла: в ней идущий прогон с текущим шагом.
+        by_id.update({run_id: saved_runs.summarize(r) for run_id, r in self._snapshots.items()})
+        return sorted(by_id.values(), key=lambda s: s.started_at, reverse=True)[:limit]
 
     async def cancel_all(self) -> None:
         """Остановить прогоны при выключении сервера, чтобы не оставлять висящих задач."""
@@ -72,7 +83,13 @@ class RunRegistry:
 
     async def _execute(self, run_id: str, query: str) -> None:
         try:
-            self._remember(await run_pipeline(query, run_id=run_id, on_progress=self._remember))
+            result = await run_pipeline(query, run_id=run_id, on_progress=self._remember)
+            self._remember(result)
+            if result.status == "done":
+                # В файл — чтобы готовая выдача пережила перезапуск и открывалась на стенде без базы.
+                # Синхронно, без await: иначе status='done' уже виден, а задача ещё жива и держит
+                # место прогона — следующий POST /search получил бы 429. Файл — доли мегабайта.
+                saved_runs.save(result)
         except asyncio.CancelledError:
             self._fail(run_id, "Прогон остановлен")
             raise
