@@ -10,7 +10,10 @@
 - сертификаты серверов выданы НУЦ Минцифры, которого нет в системном списке доверенных. Корневой
   сертификат кладём файлом и указываем путь в GIGACHAT_CA_BUNDLE; проверку TLS не отключаем;
 - `response_format` с JSON-схемой сервис принимает, но не соблюдает: отвечает нумерованным списком.
-  Поэтому схему передаём текстом в системном сообщении, а проверку схемой и повтор делает LLMClient.
+  Поэтому схему передаём текстом в системном сообщении, а проверку схемой и повтор делает LLMClient;
+- на ключе физлица одновременно проходит один запрос: карточки конвейер строит по три сразу, и
+  ночной прогон 25.09 получил 429 на 10 карточках из 15 в каждой области. Поэтому запросы к GigaChat
+  идут по одному (GIGACHAT_MAX_CONCURRENCY), а на 429 ждём и повторяем.
 
 Что нужно в .env:
     LLM_PROVIDER=gigachat
@@ -23,6 +26,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import ssl
@@ -45,6 +49,9 @@ TOKEN_TIMEOUT_S = 20.0
 # Токен обновляем заранее: запрос, начатый за секунду до истечения, не должен получить 401.
 TOKEN_MARGIN_S = 60.0
 ERROR_TEXT_LIMIT = 400
+# Повторы на 429 «Too Many Requests»: паузы 2, 4, 8, 16 с — хватает, чтобы освободился поток.
+RATE_LIMIT_RETRIES = 4
+RATE_LIMIT_BACKOFF_S = 2.0
 
 # Разрешённые ТЗ модели → название в ТЗ. Остальные модели сервиса (GigaChat-Max, -Plus и т.п.) — не из списка.
 ALLOWED_MODELS = {
@@ -64,10 +71,21 @@ class GigaChatSettings(BaseSettings):
     gigachat_ca_bundle: str = ""
     gigachat_auth_url: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
     gigachat_api_url: str = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
+    # Сколько запросов одновременно: у физлица — один, у юрлица по договору больше.
+    gigachat_max_concurrency: int = 1
 
 
 # Токен на процесс: клиент создаётся заново на каждый шаг конвейера, а просить токен на каждый вызов незачем.
 _tokens: dict[str, tuple[str, float]] = {}
+# Очередь запросов — своя на каждый цикл событий: семафор asyncio нельзя делить между циклами.
+_gates: dict[int, asyncio.Semaphore] = {}
+
+
+def _gate(limit: int) -> asyncio.Semaphore:
+    loop_id = id(asyncio.get_running_loop())
+    if loop_id not in _gates:
+        _gates[loop_id] = asyncio.Semaphore(max(1, limit))
+    return _gates[loop_id]
 
 
 @dataclass(frozen=True)
@@ -80,6 +98,7 @@ class GigaChatBackend:
     ca_bundle: str
     auth_url: str
     api_url: str
+    max_concurrency: int = 1
     provider: str = "gigachat"
 
     @classmethod
@@ -103,6 +122,7 @@ class GigaChatBackend:
             ca_bundle=s.gigachat_ca_bundle,
             auth_url=s.gigachat_auth_url,
             api_url=s.gigachat_api_url,
+            max_concurrency=s.gigachat_max_concurrency,
         )
 
     async def chat(
@@ -177,12 +197,14 @@ class GigaChatBackend:
         return token
 
     async def _post(self, body: dict[str, Any], timeout_s: float) -> dict[str, Any]:
-        try:
-            async with httpx.AsyncClient(timeout=timeout_s, verify=self._verify()) as http:
-                headers = {"Authorization": f"Bearer {await self._token(http)}", "Accept": "application/json"}
-                response = await http.post(self.api_url, json=body, headers=headers)
-        except httpx.HTTPError as exc:
-            raise LLMError(f"{self.model}: облако не ответило ({_tls_hint(exc)})") from exc
+        async with _gate(self.max_concurrency):
+            for attempt in range(RATE_LIMIT_RETRIES + 1):
+                response = await self._send(body, timeout_s)
+                if response.status_code != httpx.codes.TOO_MANY_REQUESTS or attempt == RATE_LIMIT_RETRIES:
+                    break
+                pause = RATE_LIMIT_BACKOFF_S * 2**attempt
+                log.warning("%s: 429, повтор через %.0f с (попытка %d)", self.model, pause, attempt + 1)
+                await asyncio.sleep(pause)
         if response.status_code == httpx.codes.UNAUTHORIZED:
             _tokens.pop(self.credentials, None)  # токен отозван раньше срока — следующий вызов возьмёт новый
         if response.status_code != httpx.codes.OK:
@@ -191,6 +213,14 @@ class GigaChatBackend:
             return response.json()
         except ValueError as exc:
             raise LLMError(f"{self.model}: ответ облака не разобрался как JSON ({_short(response.text)})") from exc
+
+    async def _send(self, body: dict[str, Any], timeout_s: float) -> httpx.Response:
+        try:
+            async with httpx.AsyncClient(timeout=timeout_s, verify=self._verify()) as http:
+                headers = {"Authorization": f"Bearer {await self._token(http)}", "Accept": "application/json"}
+                return await http.post(self.api_url, json=body, headers=headers)
+        except httpx.HTTPError as exc:
+            raise LLMError(f"{self.model}: облако не ответило ({_tls_hint(exc)})") from exc
 
 
 def _with_schema(messages: list[dict[str, str]], json_schema: dict) -> list[dict[str, str]]:

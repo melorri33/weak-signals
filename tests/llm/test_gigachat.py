@@ -1,5 +1,6 @@
 """Транспорт GigaChat: токен, схема в системном сообщении, ошибки — офлайн на подменённой сети."""
 
+import asyncio
 import json
 import time
 
@@ -77,3 +78,46 @@ async def test_expiring_token_is_renewed(monkeypatch: pytest.MonkeyPatch):
     await backend.chat([{"role": "user", "content": "1"}], None, max_tokens=5, timeout_s=5)
     await backend.chat([{"role": "user", "content": "1"}], None, max_tokens=5, timeout_s=5)
     assert sum(r.url.path.endswith("/oauth") for r in seen) == 2
+
+
+async def test_too_many_requests_waits_and_retries(monkeypatch: pytest.MonkeyPatch):
+    """Ключ физлица пропускает один запрос за раз: на 429 ждём и повторяем, а не теряем карточку."""
+    monkeypatch.setattr(giga_module, "RATE_LIMIT_BACKOFF_S", 0.0)
+    answers = iter([429, 429, 200])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/oauth"):
+            return httpx.Response(200, json={"access_token": "tok", "expires_at": int((time.time() + 1800) * 1000)})
+        if next(answers) == 429:
+            return httpx.Response(429, json={"status": 429, "message": "Too Many Requests"})
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ок"}, "finish_reason": "stop"}]})
+
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda *a, **kw: _REAL_ASYNC_CLIENT(*a, **{**kw, "transport": httpx.MockTransport(handler)}),
+    )
+    backend = make_backend("gigachat", "GigaChat-2")
+    assert await backend.chat([{"role": "user", "content": "1"}], None, max_tokens=5, timeout_s=5) == "ок"
+
+
+async def test_requests_go_one_at_a_time(monkeypatch: pytest.MonkeyPatch):
+    """Три карточки сразу — а к GigaChat они уходят по очереди."""
+    active, peak = 0, 0
+    real_send = GigaChatBackend._send
+
+    async def counting_send(self, body, timeout_s):
+        nonlocal active, peak
+        active += 1
+        peak = max(peak, active)
+        await asyncio.sleep(0.01)
+        try:
+            return await real_send(self, body, timeout_s)
+        finally:
+            active -= 1
+
+    _network(monkeypatch)
+    monkeypatch.setattr(GigaChatBackend, "_send", counting_send)
+    backend = make_backend("gigachat", "GigaChat-2")
+    await asyncio.gather(*(backend.chat([{"role": "user", "content": "1"}], None, 5, 5) for _ in range(3)))
+    assert peak == 1
