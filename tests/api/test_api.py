@@ -208,6 +208,7 @@ def test_runs_lists_memory_and_files_newest_first(client: TestClient, monkeypatc
     assert [r["run_id"] for r in runs] == [running, "old-run"], "битый файл пропускается, свежий прогон первым"
     assert runs[0]["status"] == "running" and runs[0]["stage"]
     assert runs[1]["signals"] == len(old.top) and runs[1]["confident_signals"] == old.confident_signals
+    assert [leader["name"] for leader in runs[1]["leaders"]] == [c.name_ru or c.name for c in old.top[:3]]
     release.set()
     _wait_done(client, running)
 
