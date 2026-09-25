@@ -102,8 +102,24 @@ def test_clean_keeps_terms_with_phrase_inside(phrase: str):
 
 @pytest.mark.parametrize(
     "placeholder",
-    ["<русская фраза 1>", "<english phrase 2>", "русская фраза 3", "english phrase 4", "фраза1"],
+    [
+        "<русская фраза 1>",
+        "<english phrase 2>",
+        "русская фраза 3",
+        "english phrase 4",
+        "фраза1",
+        "<english technology name 1>",
+        "<русское название 3>",
+    ],
 )
 def test_clean_drops_prompt_hints(placeholder: str):
-    """Подсказки из формата промпта: угловые скобки или «фраза N» / «phrase N»."""
+    """Подсказки из формата промпта: «фраза N» / «phrase N» / «name N», в скобках или без."""
     assert _clean([placeholder, "натрий-ионные аккумуляторы"]) == ["натрий-ионные аккумуляторы"]
+
+
+def test_clean_keeps_real_phrase_in_angle_brackets():
+    """YandexGPT Lite отвечает «<open banking>»: это настоящая фраза, скобки просто снимаем."""
+    assert _clean(["<quantum key distribution>", "< homomorphic encryption >", "<a<b>"]) == [
+        "quantum key distribution",
+        "homomorphic encryption",
+    ]
