@@ -121,3 +121,27 @@ async def test_requests_go_one_at_a_time(monkeypatch: pytest.MonkeyPatch):
     backend = make_backend("gigachat", "GigaChat-2")
     await asyncio.gather(*(backend.chat([{"role": "user", "content": "1"}], None, 5, 5) for _ in range(3)))
     assert peak == 1
+
+
+async def test_proxy_hiccup_is_retried(monkeypatch: pytest.MonkeyPatch):
+    """Туннель моргнул: 503 от прокси и разрыв соединения — повторяем, а не теряем пачку."""
+    monkeypatch.setattr(giga_module, "RATE_LIMIT_BACKOFF_S", 0.0)
+    answers = iter(["503", "drop", "200"])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/oauth"):
+            return httpx.Response(200, json={"access_token": "tok", "expires_at": int((time.time() + 1800) * 1000)})
+        answer = next(answers)
+        if answer == "drop":
+            raise httpx.ConnectError("соединение сброшено", request=request)
+        if answer == "503":
+            return httpx.Response(503, text="Forwarding failure")
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ок"}, "finish_reason": "stop"}]})
+
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda *a, **kw: _REAL_ASYNC_CLIENT(*a, **{**kw, "transport": httpx.MockTransport(handler)}),
+    )
+    backend = make_backend("gigachat", "GigaChat-2")
+    assert await backend.chat([{"role": "user", "content": "1"}], None, max_tokens=5, timeout_s=5) == "ок"
