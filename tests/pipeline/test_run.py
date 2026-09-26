@@ -94,6 +94,20 @@ async def test_progress_callback_sees_stages():
     assert stages[-1] == STAGE_DONE
 
 
+async def test_features_callback_sees_every_candidate():
+    """Признаки уходят наружу по всем кандидатам, включая отсеянных: по ним строится карта сигналов."""
+    seen: dict[str, list[str]] = {}
+
+    def remember(candidates, features, stats) -> None:
+        seen["candidates"] = [c.id for c in candidates]
+        seen["features"] = [f.candidate_id for f in features]
+
+    result = await run("финтех", on_features=remember)
+
+    assert seen["candidates"] and seen["features"] == seen["candidates"]
+    assert len(seen["candidates"]) == result.candidates_found
+
+
 def test_near_misses_are_logged(caplog: pytest.LogCaptureFixture):
     """Кандидаты сразу за топ-15 попадают в лог: по ним видно, что технологию нашли, но ранжировали низко."""
     scored = [
@@ -125,8 +139,9 @@ async def test_features_keep_partial_results(monkeypatch: pytest.MonkeyPatch):
     ]
     docs = [Document(id="a", source="openalex", source_type=SourceType.PAPER, title="t", url="https://example.org/a")]
 
-    features = await _features(candidates, docs)
+    features, stats = await _features(candidates, docs)
 
+    assert set(stats) == {"fast"}  # статистика только у успевших
     by_id = {f.candidate_id: f for f in features}
     assert by_id["fast"].total_pubs == 7  # успел — статистика учтена
     assert by_id["slow"].total_pubs is None  # не успел, но признаки по документам есть
@@ -305,8 +320,7 @@ def test_outer_candidates_budget_exceeds_inner():
 
     assert outer > inner, f"внешний бюджет {outer} с не больше внутреннего {inner} с"
     assert outer - inner >= 60, (
-        f"запас всего {outer - inner:.0f} с: одна пачка документов идёт около 12 с, "
-        "нужен запас хотя бы на несколько"
+        f"запас всего {outer - inner:.0f} с: одна пачка документов идёт около 12 с, нужен запас хотя бы на несколько"
     )
 
 

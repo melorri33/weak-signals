@@ -21,6 +21,16 @@ log = get_logger(__name__)
 RUNS_DIR = Path("data") / "search_runs"
 
 
+LEADERS = 3
+
+
+class RunLeader(BaseModel):
+    """Технология из начала выдачи — чтобы в списке поисков было видно, что нашлось."""
+
+    name: str
+    score: float
+
+
 class RunSummary(BaseModel):
     """Строка в списке прогонов: чтобы показать список, не нужно тянуть все карточки."""
 
@@ -34,6 +44,7 @@ class RunSummary(BaseModel):
     candidates_found: int
     signals: int
     confident_signals: int
+    leaders: list[RunLeader] = []
 
 
 def summarize(result: SearchResult) -> RunSummary:
@@ -48,6 +59,7 @@ def summarize(result: SearchResult) -> RunSummary:
         candidates_found=result.candidates_found,
         signals=len(result.top),
         confident_signals=result.confident_signals,
+        leaders=[RunLeader(name=card.name_ru or card.name, score=card.score) for card in result.top[:LEADERS]],
     )
 
 

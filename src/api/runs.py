@@ -15,9 +15,9 @@ import asyncio
 from collections import OrderedDict
 from uuid import uuid4
 
-from src.api import saved_runs
+from src.api import evidence, saved_runs
 from src.common.logs import get_logger
-from src.common.schemas import SearchResult
+from src.common.schemas import Candidate, CandidateFeatures, SearchResult, TermStats
 from src.pipeline import deps
 from src.pipeline.run import run as run_pipeline
 
@@ -43,6 +43,7 @@ class RunRegistry:
         self._keep = keep
         self._snapshots: OrderedDict[str, SearchResult] = OrderedDict()
         self._tasks: dict[str, asyncio.Task[None]] = {}
+        self._evidence: dict[str, evidence.RunEvidence] = {}
 
     @property
     def active(self) -> list[str]:
@@ -67,6 +68,10 @@ class RunRegistry:
             return snapshot
         return deps.get_search_result(run_id) or saved_runs.find(run_id)
 
+    def get_evidence(self, run_id: str) -> evidence.RunEvidence | None:
+        """Признаки кандидатов прогона: появляются на шаге «считаем признаки», хранятся в памяти и в файле."""
+        return self._evidence.get(run_id) or evidence.load(run_id)
+
     def summaries(self, limit: int = MAX_LISTED) -> list[saved_runs.RunSummary]:
         """Последние прогоны: этого процесса и сохранённые на диске, свежие первыми."""
         by_id = {r.run_id: saved_runs.summarize(r) for r in saved_runs.load_all()}
@@ -83,7 +88,12 @@ class RunRegistry:
 
     async def _execute(self, run_id: str, query: str) -> None:
         try:
-            result = await run_pipeline(query, run_id=run_id, on_progress=self._remember)
+            result = await run_pipeline(
+                query,
+                run_id=run_id,
+                on_progress=self._remember,
+                on_features=lambda c, f, s: self._remember_evidence(run_id, c, f, s),
+            )
             self._remember(result)
             if result.status == "done":
                 # В файл — чтобы готовая выдача пережила перезапуск и открывалась на стенде без базы.
@@ -106,6 +116,18 @@ class RunRegistry:
         self._snapshots[result.run_id] = result
         self._snapshots.move_to_end(result.run_id)
 
+    def _remember_evidence(
+        self,
+        run_id: str,
+        candidates: list[Candidate],
+        features: list[CandidateFeatures],
+        stats: dict[str, TermStats],
+    ) -> None:
+        """Признаки нужны карте сигналов ещё до конца прогона, поэтому пишутся сразу, а не с выдачей."""
+        item = evidence.build(run_id, candidates, features, stats)
+        self._evidence[run_id] = item
+        evidence.save(item)
+
     def _fail(self, run_id: str, error: str) -> None:
         result = self._snapshots.get(run_id)
         if result is None:
@@ -118,4 +140,5 @@ class RunRegistry:
             if task.done():
                 self._tasks.pop(run_id)
         while len(self._snapshots) > self._keep:
-            self._snapshots.popitem(last=False)
+            forgotten, _ = self._snapshots.popitem(last=False)
+            self._evidence.pop(forgotten, None)

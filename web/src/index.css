@@ -21,6 +21,12 @@
   --color-level-low: var(--level-low);
   --color-level-low-soft: var(--level-low-soft);
   --color-paper: var(--paper);
+  /* Уверенность модели — величина, а не статус: один тон от светлого к густому (dataviz, ordinal PASS).
+     Светофор остаётся только доверию к источникам — там красный действительно предупреждение. */
+  --color-conf-high: var(--conf-high);
+  --color-conf-mid: var(--conf-mid);
+  --color-conf-low: var(--conf-low);
+  --color-conf-soft: var(--conf-soft);
   /* Вклады SHAP: полярность «за / против». Пара проверена на дальтонизм (dataviz validate_palette). */
   --color-shap-for: var(--shap-for);
   --color-shap-against: var(--shap-against);
@@ -87,6 +93,11 @@
 
   --shap-for: #6a3bb0;
   --shap-against: #c0661c;
+
+  --conf-high: #5a2a9c;
+  --conf-mid: #8560c4;
+  --conf-low: #b39de0;
+  --conf-soft: #efe9f8;
 }
 
 .dark {
@@ -121,6 +132,11 @@
 
   --shap-for: #9677dd;
   --shap-against: #c97a30;
+
+  --conf-high: #c9b3ff;
+  --conf-mid: #8a6fd0;
+  --conf-low: #5a4790;
+  --conf-soft: #2c2445;
 }
 
 @layer base {
@@ -149,6 +165,27 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/* Режим показа для жюри: всё крупнее для проектора, служебные детали скрыты. */
+html[data-present] {
+  font-size: 118.75%;
+  & [data-present="hide"] {
+    display: none !important;
+  }
+}
+
+/* Единственная анимация без действия пользователя: воронка «сужается» слева направо при открытии выдачи. */
+@keyframes funnel-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.funnel-reveal {
+  animation: funnel-reveal 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 /* Подробный отчёт от модели приходит в markdown: минимальная типографика без плагинов. */
@@ -217,6 +254,10 @@
     --level-low-soft: #f6e5e3;
     --shap-for: #6a3bb0;
     --shap-against: #c0661c;
+    --conf-high: #5a2a9c;
+    --conf-mid: #8560c4;
+    --conf-low: #b39de0;
+    --conf-soft: #efe9f8;
   }
   [data-print="hide"] {
     display: none !important;

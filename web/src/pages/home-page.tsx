@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 
 import { api, type RunSummary } from "@/api/client"
+import { useEvidence, useRun } from "@/api/queries"
+import { SignalMap } from "@/components/signal-map"
 import { RunStatusBadge } from "@/components/run-status"
 import { SearchForm } from "@/components/search-form"
 import {
@@ -10,16 +12,15 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { ConfidenceBar } from "@/components/levels"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { TOP_N, formatDateTime, formatNumber } from "@/lib/format"
+  TOP_N,
+  formatDateTime,
+  formatNumber,
+  percent,
+  plural,
+} from "@/lib/format"
 
 export function HomePage() {
   return (
@@ -48,6 +49,7 @@ export function HomePage() {
         </section>
         <HowItWorks />
       </div>
+      <LatestMap />
       <RecentRuns />
     </div>
   )
@@ -97,6 +99,39 @@ function HowItWorks() {
   )
 }
 
+/** Карта последнего готового поиска — главное, что умеет сервис, видно до первого клика. */
+function LatestMap() {
+  const { data: runs } = useQuery({ queryKey: ["runs"], queryFn: api.listRuns })
+  const latest = runs?.find((r) => r.status === "done")
+  if (!latest) return null
+  return <LatestMapFor run={latest} />
+}
+
+function LatestMapFor({ run }: { run: RunSummary }) {
+  const { data: evidence } = useEvidence(run.run_id, false)
+  const { data: result } = useRun(run.run_id)
+  if (!evidence || !result) return null
+  return (
+    <section
+      aria-labelledby="latest-map"
+      className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:p-6"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="latest-map" className="text-lg font-semibold">
+          Последний поиск на карте
+        </h2>
+        <Link
+          to={`/run/${run.run_id}`}
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Открыть выдачу по запросу «{run.query}»
+        </Link>
+      </div>
+      <SignalMap result={result} evidence={evidence} compact />
+    </section>
+  )
+}
+
 function RecentRuns() {
   const { data, isPending, isError } = useQuery({
     queryKey: ["runs"],
@@ -109,10 +144,10 @@ function RecentRuns() {
         Последние поиски
       </h2>
       {isPending ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-10" />
-          <Skeleton className="h-10" />
-          <Skeleton className="h-10" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
         </div>
       ) : isError ? (
         <p className="text-sm text-muted-foreground">
@@ -129,63 +164,60 @@ function RecentRuns() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <RunsTable runs={data} />
+        <RunCards runs={data} />
       )}
     </section>
   )
 }
 
-function RunsTable({ runs }: { runs: RunSummary[] }) {
+/** Поиски карточками: по каждой сразу видно, что нашлось, — топ-3 с уверенностью. */
+function RunCards({ runs }: { runs: RunSummary[] }) {
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card">
-      <Table className="min-w-[40rem]">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="pl-4">Запрос</TableHead>
-            <TableHead>Когда</TableHead>
-            <TableHead>Состояние</TableHead>
-            <TableHead className="text-right">Сигналов</TableHead>
-            <TableHead className="pr-4 text-right">Документов</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {runs.map((run) => (
-            <TableRow key={run.run_id} className="relative">
-              <TableCell className="max-w-80 pl-4 font-medium">
-                <Link
-                  to={`/run/${run.run_id}`}
-                  className="block truncate after:absolute after:inset-0 focus-visible:outline-none after:focus-visible:ring-3 after:focus-visible:ring-ring/50"
-                >
-                  {run.query}
-                </Link>
-              </TableCell>
-              <TableCell className="text-muted-foreground">
+    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {runs.map((run) => (
+        <li key={run.run_id}>
+          <Link
+            to={`/run/${run.run_id}`}
+            className="group flex h-full flex-col gap-4 rounded-xl border bg-card p-5 transition-colors hover:border-primary/40 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            <div className="flex flex-col gap-1">
+              <h3 className="font-semibold text-balance group-hover:text-primary">
+                {run.query}
+              </h3>
+              <p className="text-xs text-muted-foreground">
                 {formatDateTime(run.started_at)}
-              </TableCell>
-              <TableCell>
-                <RunStatusBadge status={run.status} stage={run.stage} />
-              </TableCell>
-              <TableCell className="text-right">
-                {run.status === "done" ? (
-                  <>
-                    {run.signals}
-                    <span className="text-muted-foreground">
-                      , уверенных {run.confident_signals}
-                    </span>
-                  </>
-                ) : (
-                  "—"
-                )}
-              </TableCell>
-              <TableCell className="pr-4 text-right text-muted-foreground">
                 {run.documents_processed
-                  ? formatNumber(run.documents_processed)
-                  : "—"}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+                  ? `, ${formatNumber(run.documents_processed)} ${plural(run.documents_processed, "документ", "документа", "документов")}`
+                  : ""}
+              </p>
+            </div>
+            {run.status === "done" && (run.leaders ?? []).length > 0 ? (
+              <ol className="flex flex-col gap-2.5">
+                {(run.leaders ?? []).map((leader) => (
+                  <li key={leader.name} className="flex flex-col gap-1">
+                    <span className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="truncate">{leader.name}</span>
+                      <span className="shrink-0 font-medium">
+                        {percent(leader.score)}
+                      </span>
+                    </span>
+                    <ConfidenceBar score={leader.score} className="h-1" />
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <RunStatusBadge status={run.status} stage={run.stage} />
+            )}
+            {run.status === "done" ? (
+              <p className="mt-auto text-sm text-muted-foreground">
+                {run.signals}{" "}
+                {plural(run.signals, "сигнал", "сигнала", "сигналов")},
+                уверенных {run.confident_signals}
+              </p>
+            ) : null}
+          </Link>
+        </li>
+      ))}
+    </ul>
   )
 }

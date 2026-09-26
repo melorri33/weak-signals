@@ -41,6 +41,9 @@ log = get_logger(__name__)
 
 T = TypeVar("T")
 
+# Кандидаты, их признаки и статистика публикаций по candidate_id.
+FeaturesCallback = Callable[[list[Candidate], list[CandidateFeatures], dict[str, TermStats]], None]
+
 # Бюджеты шагов в секундах. Замеры на MacBook Air M1 16 ГБ: расширение запроса на qwen3:8b занимает
 # 60–92 с (таблица в README), поэтому изначальные 15 с оказались нереальными. Это один вызов на прогон,
 # и от его качества зависит, найдём ли мы технологию вообще, — поэтому бюджет щедрый.
@@ -99,8 +102,13 @@ async def run(
     *,
     run_id: str | None = None,
     on_progress: Callable[[SearchResult], None] | None = None,
+    on_features: FeaturesCallback | None = None,
 ) -> SearchResult:
-    """Прогнать запрос через весь конвейер и вернуть готовую выдачу."""
+    """Прогнать запрос через весь конвейер и вернуть готовую выдачу.
+
+    on_features получает признаки и статистику публикаций по всем кандидатам, включая отсеянных.
+    В SearchResult их нет, а интерфейсу они нужны для карты сигналов и графиков динамики.
+    """
     start_run_log()
     started = time.perf_counter()
     settings = get_settings()
@@ -139,7 +147,9 @@ async def run(
     result.candidates_found = len(candidates)
 
     progress("считаем признаки")
-    features = await _features(candidates, docs)
+    features, stats = await _features(candidates, docs)
+    if on_features is not None:
+        on_features(candidates, features, stats)
 
     progress("отсев и скоринг")
     kept, features_kept = _apply_filters(candidates, features, result)
@@ -239,8 +249,10 @@ async def _second_round(
     return fresh
 
 
-async def _features(candidates: list[Candidate], docs: list[Document]) -> list[CandidateFeatures]:
-    """Статистика по каждому кандидату и признаки по ней.
+async def _features(
+    candidates: list[Candidate], docs: list[Document]
+) -> tuple[list[CandidateFeatures], dict[str, TermStats]]:
+    """Статистика по каждому кандидату и признаки по ней. Статистика — только у тех, кто успел.
 
     Бюджет общий на все кандидаты, но результат частичный: кто успел — тот со статистикой,
     остальным считаем признаки по найденным документам. Раньше на таймауте терялась статистика
@@ -283,7 +295,8 @@ async def _features(candidates: list[Candidate], docs: list[Document]) -> list[C
             len(pending),
             len(candidates),
         )
-    return [compute(c, docs, stats_by_id.get(c.id)) for c in candidates]
+    features = [compute(c, docs, stats_by_id.get(c.id)) for c in candidates]
+    return features, {cid: stats for cid, stats in stats_by_id.items() if stats is not None}
 
 
 def _apply_filters(
@@ -359,8 +372,11 @@ def _variant_stem(word: str) -> str:
 
 
 def _name_words(name: str) -> set[str]:
-    return {_variant_stem(w) for w in re.findall(r"[A-Za-z0-9]+", name)
-            if _variant_stem(w) not in _VARIANT_STOP and len(w) > 2}
+    return {
+        _variant_stem(w)
+        for w in re.findall(r"[A-Za-z0-9]+", name)
+        if _variant_stem(w) not in _VARIANT_STOP and len(w) > 2
+    }
 
 
 def drop_name_variants(scored: list[ScoredCandidate]) -> list[ScoredCandidate]:
@@ -381,9 +397,14 @@ def drop_name_variants(scored: list[ScoredCandidate]) -> list[ScoredCandidate]:
         if len(words) < 2:
             kept.append(item)
             continue
-        twin = next((i for i, k in enumerate(kept)
-                     if len(_name_words(k.name)) >= 2
-                     and (_name_words(k.name) <= words or words <= _name_words(k.name))), None)
+        twin = next(
+            (
+                i
+                for i, k in enumerate(kept)
+                if len(_name_words(k.name)) >= 2 and (_name_words(k.name) <= words or words <= _name_words(k.name))
+            ),
+            None,
+        )
         if twin is None:
             kept.append(item)
         elif len(words) > len(_name_words(kept[twin].name)):

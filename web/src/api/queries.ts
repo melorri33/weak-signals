@@ -37,3 +37,18 @@ export function useRun(runId: string) {
       query.state.data?.status === "running" ? 0 : Infinity,
   })
 }
+
+/**
+ * Признаки кандидатов для карты и графиков. Появляются на шаге «считаем признаки»,
+ * поэтому у идущего прогона опрашиваем, пока не придут; у старых прогонов их нет (null).
+ */
+export function useEvidence(runId: string, running: boolean) {
+  return useQuery({
+    queryKey: ["evidence", runId],
+    queryFn: () => api.getEvidence(runId),
+    refetchInterval: (query) =>
+      running && !query.state.data ? POLL_MS * 2 : false,
+    staleTime: (query) => (query.state.data ? Infinity : 0),
+    enabled: Boolean(runId),
+  })
+}
