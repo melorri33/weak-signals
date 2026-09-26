@@ -78,9 +78,13 @@ _FUNCTION_WORDS = {
 }
 
 # Модель иногда переносит в ответ подсказки из формата промпта («<русская фраза 1>») — их выкидываем.
-# Ловим только угловые скобки и «фраза N» / «phrase N»: просто слово «phrase» встречается в нормальных
-# терминах («key phrase extraction», «passphrase-less authentication»), и выкидывать их нельзя.
-_PLACEHOLDER_RE = re.compile(r"[<>]|\b(?:фраза|phrase)\s*\d", re.IGNORECASE)
+# Ловим «фраза N» / «phrase N» / «name N»: просто слово «phrase» встречается в нормальных терминах
+# («key phrase extraction», «passphrase-less authentication»), и выкидывать их нельзя.
+# Угловые скобки вокруг настоящей фразы — не подсказка: YandexGPT Lite копирует их из формата
+# и отвечает «<open banking>». Раньше такие фразы выкидывались все до одной, и поиск шёл
+# по заготовкам из запроса (проба 25.09: 0 годных фраз из 14, 0 документов). Теперь скобки снимаем.
+_PLACEHOLDER_RE = re.compile(r"[<>]|\b(?:фраза|phrase|name|название)\s*\d", re.IGNORECASE)
+_BRACKETED_RE = re.compile(r"^<\s*([^<>]+?)\s*>$")
 
 # Отрасли и общие направления: по такой фразе находятся обзоры рынка, а не конкретные технологии.
 # Промпт их запрещает, но модель иногда всё равно копирует их из списка «не годится».
@@ -169,6 +173,7 @@ def _clean(phrases: list[str]) -> list[str]:
     seen: set[str] = set()
     for raw in phrases:
         phrase = " ".join(raw.replace('"', " ").replace("«", " ").replace("»", " ").split())
+        phrase = _BRACKETED_RE.sub(r"\1", phrase)
         words = phrase.split()
         if not (1 < len(words) <= MAX_WORDS_IN_PHRASE):
             continue
