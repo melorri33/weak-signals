@@ -1,4 +1,4 @@
-"""Транспорты к моделям: локальный Ollama и облако из списка ТЗ.
+"""Транспорты к моделям: локальный Ollama и облако из списка ТЗ (YandexGPT, GigaChat).
 
 Выбор провайдера — переменная `LLM_PROVIDER`. Клиент (src/llm/client.py) один для всех: он хранит
 кэш ответов, повтор при непрохождении схемы и запись в журнал моделей, а транспорт отвечает только
@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from src.llm.errors import LLMError
+from src.llm.providers.gigachat import GigaChatBackend
 from src.llm.providers.ollama import OllamaBackend
 from src.llm.providers.yandexgpt import YandexGPTBackend
 
@@ -44,6 +45,7 @@ BACKENDS = {
     "ollama": OllamaBackend,
     "yandexgpt": YandexGPTBackend,
     "yandex": YandexGPTBackend,
+    "gigachat": GigaChatBackend,
 }
 
 
@@ -58,4 +60,4 @@ def make_backend(provider: str, model: str) -> ChatBackend:
     return factory.from_settings(model)
 
 
-__all__ = ["BACKENDS", "ChatBackend", "OllamaBackend", "YandexGPTBackend", "make_backend"]
+__all__ = ["BACKENDS", "ChatBackend", "GigaChatBackend", "OllamaBackend", "YandexGPTBackend", "make_backend"]

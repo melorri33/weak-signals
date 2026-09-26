@@ -37,12 +37,13 @@ cp .env.example .env            # править не обязательно, з
 
 ### 2. Модель: локально или в облаке
 
-Проект работает с двумя провайдерами, выбор — переменная `LLM_PROVIDER`:
+Проект работает с тремя провайдерами, выбор — переменная `LLM_PROVIDER`:
 
 | `LLM_PROVIDER` | Где считает | Когда выбирать |
 | --- | --- | --- |
 | `ollama` | своя машина, бесплатно | есть видеокарта (проверяли на RTX 3060) |
 | `yandexgpt` | облако Яндекса, по токенам | нет видеокарты и для стенда жюри |
+| `gigachat` | облако Сбера, по токенам | то же; вторая облачная модель для сравнения |
 
 На процессоре без видеокарты локальная модель не успевает: один вызов на пачку из 8 документов
 занял **143 с** (`qwen3:8b`, MacBook Air M1 в контейнере), а таких пачек в прогоне десятки.
@@ -81,6 +82,36 @@ YANDEX_FOLDER_ID=…              # идентификатор каталога
 Проверка: `curl -s localhost:8000/health` покажет `"llm_available": true`. Ollama при этом не нужна.
 Запросы к облаку идут так же, как к локальной модели, и так же попадают в журнал вызовов моделей
 (требование ТЗ): в выдаче будет `provider: yandexgpt` и имя модели.
+
+#### Вариант В: облачная модель GigaChat
+
+Из списка ТЗ — GigaChat 2 Lite, Pro и Max (`GigaChat-2`, `GigaChat-2-Pro`, `GigaChat-2-Max`).
+
+1. В [личном кабинете](https://developers.sber.ru/studio) создай проект GigaChat API →
+   «Настройки API» → «Получить ключ». Ключ показывается один раз.
+2. Серверы Сбера подписаны НУЦ Минцифры — скачай корневой сертификат:
+   `curl -o data/certs/russian_trusted_root_ca_pem.crt https://gu-st.ru/content/lending/russian_trusted_root_ca_pem.crt`
+3. Впиши в `.env`:
+
+```bash
+LLM_PROVIDER=gigachat
+LLM_MODEL=GigaChat-2
+GIGACHAT_CREDENTIALS=…          # «Authorization Key»
+GIGACHAT_CA_BUNDLE=data/certs/russian_trusted_root_ca_pem.crt
+```
+
+#### Сравнение моделей на запросах жюри
+
+Тот же конвейер по 6 областям датасета, по очереди на каждой модели. Можно оставить на ночь:
+готовая область при повторном запуске пропускается, модель без ключа — тоже.
+
+```bash
+caffeinate -ims python -m src.pipeline.compare_models \
+    gigachat:GigaChat-2 yandexgpt:yandexgpt-5-lite ollama:qwen3:4b
+```
+
+Прогоны — `data/model_runs/<модель>/<область>.json`, сводная таблица — `data/model_compare.md`
+(столбец «совпало с датасетом» — если в `data/` лежат xlsx датасета и `positive_terms.csv`).
 
 ### 3. База данных
 
@@ -196,11 +227,12 @@ ruff format . && ruff check .  # перед коммитом
 
 | Переменная | Зачем | По умолчанию |
 | --- | --- | --- |
-| `LLM_PROVIDER` | `ollama` — локально, `yandexgpt` — облако из списка ТЗ | `ollama` |
+| `LLM_PROVIDER` | `ollama` — локально, `yandexgpt` или `gigachat` — облако из списка ТЗ | `ollama` |
 | `LLM_MODEL` | модель: `qwen3:8b` для Ollama или `yandexgpt-5-lite` для облака | `qwen3:8b` |
 | `OLLAMA_URL` | адрес Ollama для процессов на хосте | `http://localhost:11434` |
 | `OLLAMA_URL_IN_DOCKER` | адрес Ollama для контейнеров | `http://host.docker.internal:11434` |
 | `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | доступ к облаку при `LLM_PROVIDER=yandexgpt` | пусто |
+| `GIGACHAT_CREDENTIALS`, `GIGACHAT_CA_BUNDLE` | доступ к облаку при `LLM_PROVIDER=gigachat` | пусто |
 | `LLM_CACHE` | кэшировать ответы модели в `data/llm_cache` (`0` — выключить) | `1` |
 | `API_PORT`, `UI_PORT` | порты API и интерфейса на хосте | `8000`, `8501` |
 | `EMBED_MODEL` | модель эмбеддингов для склейки кандидатов | `BAAI/bge-m3` |
