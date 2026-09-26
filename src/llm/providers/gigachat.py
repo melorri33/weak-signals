@@ -27,8 +27,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
-import re
 import ssl
 import time
 import uuid
@@ -40,6 +38,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.common.logs import get_logger
 from src.llm.errors import LLMError
+from src.llm.providers.schema_text import strip_fence, with_schema
 
 log = get_logger(__name__)
 
@@ -133,7 +132,7 @@ class GigaChatBackend:
         timeout_s: float,
     ) -> str:
         if json_schema is not None:
-            messages = _with_schema(messages, json_schema)
+            messages = with_schema(messages, json_schema)
         body = {
             "model": self.model,
             "messages": messages,
@@ -149,7 +148,7 @@ class GigaChatBackend:
         if choice.get("finish_reason") == "length":
             log.warning("%s: ответ обрезан по max_tokens=%d — возможно, не пройдёт схему", self.model, max_tokens)
         content = (choice.get("message") or {}).get("content", "")
-        return _strip_fence(content) if json_schema is not None else content
+        return strip_fence(content) if json_schema is not None else content
 
     async def is_available(self) -> bool:
         """Отвечает ли облако на самый короткий запрос (для GET /health)."""
@@ -221,22 +220,6 @@ class GigaChatBackend:
                 return await http.post(self.api_url, json=body, headers=headers)
         except httpx.HTTPError as exc:
             raise LLMError(f"{self.model}: облако не ответило ({_tls_hint(exc)})") from exc
-
-
-def _with_schema(messages: list[dict[str, str]], json_schema: dict) -> list[dict[str, str]]:
-    """Добавить JSON-схему в системное сообщение: сам сервис схему не соблюдает."""
-    rule = "Ответ — только один JSON-объект строго по этой JSON-схеме, без пояснений и без ```:\n" + json.dumps(
-        json_schema, ensure_ascii=False
-    )
-    if messages and messages[0]["role"] == "system":
-        return [{"role": "system", "content": f"{messages[0]['content']}\n\n{rule}"}, *messages[1:]]
-    return [{"role": "system", "content": rule}, *messages]
-
-
-def _strip_fence(content: str) -> str:
-    """Модель иногда оборачивает JSON в ```json … ``` — схема такое не пропустит."""
-    match = re.fullmatch(r"\s*```(?:json)?\s*(.*?)\s*```\s*", content, re.DOTALL)
-    return match.group(1) if match else content
 
 
 def _tls_hint(exc: Exception) -> str:

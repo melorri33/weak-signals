@@ -121,8 +121,9 @@ async def test_cloud_request_carries_key_folder_and_schema(cloud_settings, monke
     body = json.loads(request.content)
     assert body["model"] == f"gpt://{FOLDER}/{MODEL}"
     assert body["max_tokens"] == 50 and body["stream"] is False
-    assert body["response_format"]["type"] == "json_schema"
-    assert body["response_format"]["json_schema"]["schema"]["properties"]["city"]
+    # Схема — текстом в системном сообщении: structured output Яндекса ломает ключи на вложенных списках.
+    assert "response_format" not in body
+    assert '"city"' in body["messages"][0]["content"]
 
 
 async def test_cloud_error_shows_status_and_answer_text(cloud_settings, monkeypatch: pytest.MonkeyPatch):
