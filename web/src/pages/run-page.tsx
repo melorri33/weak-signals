@@ -2,7 +2,7 @@ import { ArrowLeftIcon, DownloadIcon, RotateCcwIcon } from "lucide-react"
 import { Link, useParams, useSearchParams } from "react-router"
 
 import { ApiError, type SearchResult } from "@/api/client"
-import { useRun, useStartSearch } from "@/api/queries"
+import { useEvidence, useRun, useStartSearch } from "@/api/queries"
 import { Funnel, type RunTab } from "@/components/funnel"
 import {
   AllCandidates,
@@ -12,6 +12,7 @@ import {
   SourceFailuresNote,
   TopSignals,
 } from "@/components/run-tabs"
+import { SignalMap } from "@/components/signal-map"
 import { StageProgress } from "@/components/stage-progress"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -47,9 +48,30 @@ export function RunPage() {
   return (
     <div className="flex flex-col gap-8">
       <RunHeader result={result} />
-      {result.status === "running" ? <StageProgress result={result} /> : null}
+      {result.status === "running" ? <LiveRun result={result} /> : null}
       {result.status === "error" ? <RunError result={result} /> : null}
       {result.status === "done" ? <RunResult result={result} /> : null}
+    </div>
+  )
+}
+
+/** Идущий прогон: шаги, а как только посчитаны признаки — кандидаты на карте. */
+function LiveRun({ result }: { result: SearchResult }) {
+  const { data: evidence } = useEvidence(result.run_id, true)
+  return (
+    <div className="flex flex-col gap-8">
+      <StageProgress result={result} />
+      {evidence ? (
+        <section
+          aria-labelledby="live-map"
+          className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:p-6"
+        >
+          <h2 id="live-map" className="text-lg font-semibold">
+            Кандидаты на карте
+          </h2>
+          <SignalMap result={result} evidence={evidence} />
+        </section>
+      ) : null}
     </div>
   )
 }
@@ -92,6 +114,7 @@ function RunHeader({ result }: { result: SearchResult }) {
 }
 
 function RunResult({ result }: { result: SearchResult }) {
+  const { data: evidence } = useEvidence(result.run_id, false)
   const [params, setParams] = useSearchParams()
   const requested = params.get("tab") as RunTab | null
   const tab: RunTab = requested && TABS.includes(requested) ? requested : "top"
@@ -120,6 +143,17 @@ function RunResult({ result }: { result: SearchResult }) {
           onDetails={() => open("method")}
         />
       </div>
+      {evidence ? (
+        <section
+          aria-labelledby="signal-map"
+          className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:p-6"
+        >
+          <h2 id="signal-map" className="text-lg font-semibold">
+            Карта сигналов
+          </h2>
+          <SignalMap result={result} evidence={evidence} />
+        </section>
+      ) : null}
       <Tabs
         id="run-tabs"
         value={tab}
@@ -142,7 +176,7 @@ function RunResult({ result }: { result: SearchResult }) {
           </TabsList>
         </div>
         <TabsContent value="top">
-          <TopSignals result={result} />
+          <TopSignals result={result} evidence={evidence ?? undefined} />
         </TabsContent>
         <TabsContent value="excluded">
           <ExcludedList excluded={result.excluded ?? []} />

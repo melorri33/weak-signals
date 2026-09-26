@@ -8,14 +8,17 @@ import {
 import { Link } from "react-router"
 
 import type {
+  CandidateEvidence,
   FilterDecision,
   ModelCall,
   ReasonCode,
+  RunEvidence,
   SearchResult,
   SignalCard,
   SourceFailure,
 } from "@/api/client"
 import { ConfidenceBar, ConfidenceScore, TrustDots } from "@/components/levels"
+import { PubSparkline } from "@/components/pub-dynamics"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -54,8 +57,17 @@ import { cn } from "@/lib/utils"
 const KEY_PREDICTORS = 2
 
 /** Топ-15 — таблица по образцу интерфейса из ТЗ: технология, скоринг, ключевые предикторы, инсайт. */
-export function TopSignals({ result }: { result: SearchResult }) {
+export function TopSignals({
+  result,
+  evidence,
+}: {
+  result: SearchResult
+  evidence?: RunEvidence
+}) {
   const top = result.top ?? []
+  const byId = new Map(
+    (evidence?.candidates ?? []).map((c) => [c.candidate_id, c])
+  )
   if (top.length === 0) {
     return (
       <Empty className="border">
@@ -78,6 +90,7 @@ export function TopSignals({ result }: { result: SearchResult }) {
             <TableHead>Технология</TableHead>
             <TableHead className="w-40">Уверенность модели</TableHead>
             <TableHead>Ключевые предикторы</TableHead>
+            {evidence ? <TableHead className="w-28">Динамика</TableHead> : null}
             <TableHead className="w-28">Источники</TableHead>
             <TableHead className="w-36 pr-4">
               <span className="sr-only">Инсайт</span>
@@ -91,6 +104,8 @@ export function TopSignals({ result }: { result: SearchResult }) {
               card={card}
               rank={i + 1}
               runId={result.run_id}
+              withDynamics={Boolean(evidence)}
+              dynamics={byId.get(card.candidate_id)}
             />
           ))}
         </TableBody>
@@ -103,10 +118,14 @@ function SignalRow({
   card,
   rank,
   runId,
+  withDynamics,
+  dynamics,
 }: {
   card: SignalCard
   rank: number
   runId: string
+  withDynamics: boolean
+  dynamics?: CandidateEvidence
 }) {
   const reasons = [...(card.top_reasons ?? [])]
     .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
@@ -155,6 +174,15 @@ function SignalRow({
           ) : null}
         </ul>
       </TableCell>
+      {withDynamics ? (
+        <TableCell className="py-3">
+          {dynamics ? (
+            <PubSparkline item={dynamics} />
+          ) : (
+            <span className="text-xs text-muted-foreground">нет данных</span>
+          )}
+        </TableCell>
+      ) : null}
       <TableCell className="py-3">
         <div className="flex flex-col gap-1.5">
           <span className="text-sm">
