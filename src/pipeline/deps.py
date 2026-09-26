@@ -6,6 +6,7 @@
 
 Что чем подменяется:
     collectors.collect     → документы из tests/fixtures/documents_example.json
+                             (настоящий сбор — без самопубликаций, см. src/pipeline/self_published.py)
     collectors.term_stats  → None (features.compute умеет работать без статистики)
     storage.save_documents → ничего не делаем
     storage.get_search_result → None (API отдаёт прогон из памяти)
@@ -32,6 +33,7 @@ from src.common.schemas import (
     TermStats,
     TrustLevel,
 )
+from src.pipeline.self_published import without_self_published
 
 log = get_logger(__name__)
 
@@ -56,12 +58,12 @@ def _warn_once(what: str) -> None:
 
 
 async def collect(phrases: list[str], limit: int) -> list[Document]:
-    """Собрать документы по поисковым фразам (collectors.collect)."""
+    """Собрать документы по поисковым фразам (collectors.collect), без самопубликаций."""
     real: Callable[..., Any] | None = _load("src.collectors", "collect")
     if real is None:
         _warn_once("collectors.collect")
         return fixture_documents()[:limit]
-    return await real(phrases, limit=limit)
+    return without_self_published(await real(phrases, limit=limit))
 
 
 def fixture_documents() -> list[Document]:
