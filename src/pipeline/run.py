@@ -110,6 +110,7 @@ async def run(
     В SearchResult их нет, а интерфейсу они нужны для карты сигналов и графиков динамики.
     """
     start_run_log()
+    deps.new_run()
     started = time.perf_counter()
     settings = get_settings()
     result = SearchResult(run_id=run_id or uuid4().hex[:12], query=query, stage=STAGE_START)
