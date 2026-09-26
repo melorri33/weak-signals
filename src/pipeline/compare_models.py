@@ -26,7 +26,7 @@ import re
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from src.common.logs import get_logger
@@ -132,6 +132,7 @@ class Row:
     with_pubs: float | None = None
     matched_top: int | None = None
     matched_scored: int | None = None
+    matches: list[str] = field(default_factory=list)
 
 
 def row_for(model: str, domain: str, result: SearchResult, reference=None) -> Row:
@@ -153,9 +154,11 @@ def row_for(model: str, domain: str, result: SearchResult, reference=None) -> Ro
     if reference is not None:
         from src.model.eval_search import evaluate
 
-        found = {s.stage: len(s.found) for s in evaluate(reference, domain, result=result)}
-        row.matched_top = found.get("топ-15")
-        row.matched_scored = found.get("все проскоренные")
+        stages = {s.stage: s.found for s in evaluate(reference, domain, result=result)}
+        row.matched_top = len(stages.get("топ-15", {}))
+        row.matched_scored = len(stages.get("все проскоренные", {})) if "все проскоренные" in stages else None
+        names = {item.id: item.name_ru for item in reference}
+        row.matches = [f"{names[i]} — {by}" for i, by in stages.get("топ-15", {}).items()]
     return row
 
 
@@ -235,6 +238,15 @@ def report_md(rows: list[Row]) -> str:
         f"| {_pct(r.with_pubs)} | {r.failures} |"
         for r in rows
     ]
+    if any(r.matches for r in rows):
+        lines += [
+            "",
+            "## Что совпало с датасетом в топ-15",
+            "",
+            "Сверка автоматическая и приблизительная — спорное смотреть глазами.",
+            "",
+        ]
+        lines += [f"- {r.model}, {r.domain}: {m}" for r in rows for m in r.matches]
     return "\n".join(lines) + "\n"
 
 
