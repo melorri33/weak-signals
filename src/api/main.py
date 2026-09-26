@@ -4,6 +4,7 @@
     POST /search                              → запускает прогон, сразу отдаёт run_id
     GET  /search/{run_id}                     → SearchResult: пока идёт — со stage, потом с топ-15
     GET  /signal/{run_id}/{candidate_id}      → карточка одного сигнала
+    GET  /runs                                → последние прогоны (память + data/search_runs)
     GET  /health                              → доступна ли модель и база
 
 Запуск: uvicorn src.api.main:app --reload
@@ -19,7 +20,9 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from src.api.evidence import RunEvidence
 from src.api.runs import RunRegistry, TooManyRuns
+from src.api.saved_runs import RunSummary
 from src.common.config import get_settings
 from src.common.logs import get_logger
 from src.common.schemas import SearchResult, SignalCard
@@ -85,6 +88,24 @@ def get_search(run_id: str) -> SearchResult:
     return result
 
 
+@app.get("/search/{run_id}/evidence", response_model=RunEvidence)
+def get_evidence(run_id: str) -> RunEvidence:
+    """Признаки и публикации по годам для всех кандидатов прогона — для карты сигналов и графиков."""
+    item = registry.get_evidence(run_id)
+    if item is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Для прогона {run_id} признаки не сохранены: прогон старше карты сигналов или ещё идёт",
+        )
+    return item
+
+
+@app.get("/runs", response_model=list[RunSummary])
+def list_runs() -> list[RunSummary]:
+    """Последние прогоны для списка в интерфейсе: идущий и готовые, свежие первыми."""
+    return registry.summaries()
+
+
 @app.get("/signal/{run_id}/{candidate_id}", response_model=SignalCard)
 def get_signal(run_id: str, candidate_id: str) -> SignalCard:
     """Карточка одного сигнала из выдачи прогона."""
@@ -114,7 +135,7 @@ async def health() -> Health:
     # to_thread: проверка базы блокирующая (до 2 с на таймаут подключения), а цикл событий занят прогоном.
     database_available = await asyncio.to_thread(deps.database_ok)
     if not database_available:
-        notes.append("База недоступна: прогоны живут только в памяти и не переживут перезапуск сервера")
+        notes.append("База недоступна: готовые прогоны сохраняются только в файлы data/search_runs")
     return Health(
         status="ok" if llm_available and database_available else "degraded",
         llm_model=settings.llm_model,

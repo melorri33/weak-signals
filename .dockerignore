@@ -12,3 +12,5 @@ notebooks/
 reports/
 docs/
 .env
+# Веб-интерфейс собирается своим образом (web/Dockerfile); node_modules в Python-образе не нужны.
+web/
