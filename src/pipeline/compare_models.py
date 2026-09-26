@@ -128,6 +128,7 @@ class Row:
     llm_calls: int
     llm_s: float
     failures: int
+    with_pubs: float | None = None
     matched_top: int | None = None
     matched_scored: int | None = None
 
@@ -146,6 +147,7 @@ def row_for(model: str, domain: str, result: SearchResult, reference=None) -> Ro
         llm_calls=len(llm),
         llm_s=sum(c.duration_ms for c in llm) / 1000,
         failures=len(result.source_failures),
+        with_pubs=_with_pubs(result),
     )
     if reference is not None:
         from src.model.eval_search import evaluate
@@ -154,6 +156,19 @@ def row_for(model: str, domain: str, result: SearchResult, reference=None) -> Ro
         row.matched_top = found.get("топ-15")
         row.matched_scored = found.get("все проскоренные")
     return row
+
+
+def _with_pubs(result: SearchResult) -> float | None:
+    """Доля кандидатов, для которых OpenAlex отдал ряд публикаций по годам.
+
+    От этих рядов зависят главные признаки модели (рост публикаций) и уверенность. Анонимный лимит
+    OpenAlex общий на IP: в одну ночь он то кончается, то обнуляется, и прогоны получают разные данные —
+    без этого столбца сравнение моделей выглядело бы честнее, чем оно есть.
+    """
+    if not result.candidates_found:
+        return None
+    failed = sum(f.count for f in result.source_failures if f.source == "openalex_years")
+    return max(0.0, 1 - failed / result.candidates_found)
 
 
 def load_rows(root: Path = RUNS_DIR, reference=None) -> list[Row]:
@@ -173,6 +188,10 @@ def load_reference_if_present():
     from src.model.eval_search import load_reference
 
     return load_reference()
+
+
+def _pct(value: float | None) -> str:
+    return "—" if value is None else f"{value:.0%}"
 
 
 def _n(value: int | None) -> str:
@@ -206,12 +225,13 @@ def report_md(rows: list[Row]) -> str:
         "## По областям",
         "",
         "| Модель | Область | Совпало в топ-15 | Документов | Кандидатов | В топе | Уверенных "
-        "| Без текста | Вызовов LLM | Время, мин | Отказов источников |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| Без текста | Вызовов LLM | Время, мин | С рядом публикаций | Отказов источников |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     lines += [
         f"| {r.model} | {r.domain} | {_n(r.matched_top)} | {r.documents} | {r.candidates} | {r.top} "
-        f"| {r.confident} | {r.no_text} | {r.llm_calls} | {r.duration_s / 60:.1f} | {r.failures} |"
+        f"| {r.confident} | {r.no_text} | {r.llm_calls} | {r.duration_s / 60:.1f} "
+        f"| {_pct(r.with_pubs)} | {r.failures} |"
         for r in rows
     ]
     return "\n".join(lines) + "\n"
