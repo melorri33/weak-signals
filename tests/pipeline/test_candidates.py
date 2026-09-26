@@ -299,3 +299,118 @@ def test_slug_names_become_words(raw: str, expected: str):
 def test_slug_with_generic_head_is_dropped_after_unslug():
     """«sensat-data-platform» проходил как одно слово; после разбора срабатывает проверка общего слова."""
     assert not _is_usable(_unslug("sensat-data-platform"))
+
+
+async def test_cap_takes_candidates_from_every_batch(monkeypatch: pytest.MonkeyPatch):
+    """Предел не должен срезать всё найденное в последних пачках: берём по кругу."""
+    monkeypatch.setattr(candidates_module, "MAX_CANDIDATES", 4)
+    docs = [_doc(str(i), f"Работа {i}") for i in range(16)]  # две пачки по 8
+    first = {"candidates": [{"name": f"early sensor {n}", "document_ids": ["d1"]} for n in "abcd"]}
+    second = {"candidates": [{"name": "late sensor", "document_ids": ["d1"]}]}
+    client = _FakeClient([first, second])
+
+    names = [c.name for c in await extract_candidates(docs, client=client)]
+
+    assert "late sensor" in names
+    assert names[:2] == ["early sensor a", "late sensor"]
+
+
+@pytest.mark.parametrize(
+    "variants",
+    [
+        ["algae bioreactors", "algae-bioreactors", "algae bioreactor"],
+        ["solid-state batteries", "solid state battery"],
+        ["heat pump compressors", "heat pump compressor"],
+    ],
+)
+async def test_plural_and_hyphen_variants_are_one_candidate(variants: list[str]):
+    docs = [_doc(str(i), f"Работа {i}") for i in range(8)]
+    answer = {"candidates": [{"name": v, "document_ids": [f"d{n + 1}"]} for n, v in enumerate(variants)]}
+
+    candidates = await extract_candidates(docs, client=_FakeClient([answer]))
+
+    assert len(candidates) == 1 and candidates[0].name == variants[0]
+    assert len(candidates[0].document_ids) == len(variants)
+
+
+@pytest.mark.parametrize("word", ["robotics", "analysis", "glass", "consensus"])
+def test_singular_keeps_words_that_only_look_plural(word: str):
+    assert candidates_module._singular(word) == word
+
+
+def _news(title: str, abstract: str) -> Document:
+    return Document(
+        id="n", source="news", source_type=SourceType.NEWS, title=title, abstract=abstract, url="https://e.x/n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "title", "abstract"),
+    [
+        ("harvestiq", "HarvestIQ closes $12M round", "The startup HarvestIQ makes crop yield models."),
+        ("bayasystems", "Baya Systems raises $36M to propel chiplet innovation", "Baya Systems builds fabrics."),
+        ("mistral ai model", "Cloudera brings Mistral AI models on premises", "Cloudera will offer Mistral AI models."),
+        ("alexandre lebrun", "Alexandre Lebrun leaves the company", "Alexandre Lebrun, a founder, said."),
+        # Имя с опечаткой.
+        ("havrestiq", "HarvestIQ closes $12M round", "The startup HarvestIQ makes crop yield models."),
+    ],
+)
+def test_company_product_and_person_names_are_not_technologies(name: str, title: str, abstract: str):
+    assert candidates_module._is_proper_name(name, [_news(title, abstract)])
+
+
+@pytest.mark.parametrize(
+    ("name", "title", "abstract"),
+    [
+        ("neocloud", "Groq raises $350M to fuel its pivot from AI chips to neocloud", "The neocloud market grows."),
+        # Заголовок «всё с заглавной» — не признак имени.
+        ("solid state hydrogen storage", "Startup Secures $80M to Scale Solid State Hydrogen Storage", ""),
+        ("chiplet interconnect", "Baya Systems raises $36M", "Baya Systems builds chiplet interconnect fabrics."),
+        # «Quantum» из «IBM Quantum» — одиночное слово с заглавной, не имя.
+        ("quantum computing", "IBM Quantum hits milestone", "IBM Quantum said quantum computing will scale."),
+        ("SASE", "Firms adopt SASE", "SASE grows."),
+        # Однословная технология, не похожая на имена в тексте.
+        ("chiplets", "Baya Systems raises $36M to propel AI and chiplet innovation", "Baya Systems builds fabrics."),
+    ],
+)
+def test_technologies_are_kept(name: str, title: str, abstract: str):
+    assert not candidates_module._is_proper_name(name, [_news(title, abstract)])
+
+
+async def test_company_name_does_not_take_a_candidate_slot():
+    docs = [_news("HarvestIQ closes round for its yield models", "HarvestIQ builds crop yield forecasting.")]
+    answer = {
+        "candidates": [
+            {"name": "harvestiq", "document_ids": ["d1"]},
+            {"name": "crop yield forecasting", "document_ids": ["d1"]},
+        ]
+    }
+    names = [c.name for c in await extract_candidates(docs, client=_FakeClient([answer]))]
+    assert names == ["crop yield forecasting"]
+
+
+@pytest.mark.parametrize("name", ["gpt-6", "stretch-4", "gemma_3", "artificial-intelligence", "agentic_ai"])
+async def test_versions_and_broad_terms_in_any_spelling_are_dropped(name: str):
+    docs = [_doc("a", "Работа")]
+    answer = {
+        "candidates": [{"name": name, "document_ids": ["d1"]}, {"name": "quantum sensing", "document_ids": ["d1"]}]
+    }
+    names = [c.name for c in await extract_candidates(docs, client=_FakeClient([answer]))]
+    assert names == ["quantum sensing"]
+
+
+def test_possessive_does_not_hide_a_company_name():
+    doc = _news("Cloudera brings models on premises", "Cloudera will offer Mistral AI’s frontier models.")
+    assert candidates_module._is_proper_name("mistral ai model", [doc])
+
+
+async def test_name_that_is_the_company_itself_is_dropped():
+    docs = [_doc("a", "Работа")]
+    answer = {
+        "candidates": [
+            {"name": "acme agro sensors", "company": "Acme Agro", "document_ids": ["d1"]},
+            {"name": "soil moisture sensing", "company": "Acme Agro", "document_ids": ["d1"]},
+        ]
+    }
+    names = [c.name for c in await extract_candidates(docs, client=_FakeClient([answer]))]
+    assert names == ["soil moisture sensing"]
