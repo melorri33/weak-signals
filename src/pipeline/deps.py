@@ -66,6 +66,20 @@ async def collect(phrases: list[str], limit: int) -> list[Document]:
     return without_self_published(await real(phrases, limit=limit))
 
 
+def new_run() -> None:
+    """Начало прогона: сборщик забывает, какие ленты «исчерпались» в прошлых прогонах.
+
+    Лента, ответившая 429, выключается до конца прогона (collectors.news), но сброса между прогонами
+    никто не вызывал — в API и в прогоне по шести областям подряд лента оставалась выключенной
+    до перезапуска процесса. 26.09: SiliconANGLE ответил 429 на десятой секунде первой области
+    и дальше не дал ни одного документа — 15 ответов за все шесть областей против ~250 на область
+    со сбросом. VentureBeat — ноль.
+    """
+    forget: Callable[..., Any] | None = _load("src.collectors.news", "forget_exhausted_feeds")
+    if forget is not None:
+        forget()
+
+
 def fixture_documents() -> list[Document]:
     """Примеры документов для офлайн-прогонов и тестов."""
     raw = json.loads(FIXTURE_DOCUMENTS.read_text(encoding="utf-8"))
