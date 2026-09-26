@@ -100,6 +100,19 @@ GIGACHAT_CREDENTIALS=…          # «Authorization Key»
 GIGACHAT_CA_BUNDLE=data/certs/russian_trusted_root_ca_pem.crt
 ```
 
+#### Сравнение моделей на запросах жюри
+
+Тот же конвейер по 6 областям датасета, по очереди на каждой модели. Можно оставить на ночь:
+готовая область при повторном запуске пропускается, модель без ключа — тоже.
+
+```bash
+caffeinate -ims python -m src.pipeline.compare_models \
+    gigachat:GigaChat-2 yandexgpt:yandexgpt-5-lite ollama:qwen3:4b
+```
+
+Прогоны — `data/model_runs/<модель>/<область>.json`, сводная таблица — `data/model_compare.md`
+(столбец «совпало с датасетом» — если в `data/` лежат xlsx датасета и `positive_terms.csv`).
+
 ### 3. База данных
 
 ```bash
