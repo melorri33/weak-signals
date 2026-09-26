@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from src.common.schemas import Candidate, Document, SourceType
 from src.llm.client import LLMError
 from src.pipeline import candidates as candidates_module
-from src.pipeline.candidates import extract_candidates, warn_on_long_names
+from src.pipeline.candidates import _is_usable, _unslug, extract_candidates, warn_on_long_names
 
 
 def _doc(doc_id: str, title: str, source_type: SourceType = SourceType.PAPER) -> Document:
@@ -280,3 +280,22 @@ def test_every_plural_generic_head_has_its_singular():
         if singular not in _TOO_GENERIC_HEAD:
             missing.append(f"«{word}» есть, «{singular}» нет")
     assert not missing, "в списке общих слов не хватает форм: " + "; ".join(missing)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("robotic-process-automation", "robotic process automation"),
+        ("sodium-ion battery", "sodium-ion battery"),
+        ("humanoid-robot", "humanoid-robot"),
+        ("post-quantum-cryptography", "post quantum cryptography"),
+    ],
+)
+def test_slug_names_become_words(raw: str, expected: str):
+    """GigaChat пишет названия слагами: делаем из них слова, настоящие дефисы в терминах не трогаем."""
+    assert _unslug(raw) == expected
+
+
+def test_slug_with_generic_head_is_dropped_after_unslug():
+    """«sensat-data-platform» проходил как одно слово; после разбора срабатывает проверка общего слова."""
+    assert not _is_usable(_unslug("sensat-data-platform"))

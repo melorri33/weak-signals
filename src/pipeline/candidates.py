@@ -316,7 +316,7 @@ def _documents_block(labels: dict[str, Document]) -> str:
 def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[str, Document]) -> None:
     """Добавить кандидатов пачки к общему списку, склеивая одинаковые по slug."""
     for item in found:
-        name = " ".join(item.name.split())
+        name = _unslug(" ".join(item.name.split()))
         if not _is_usable(name):
             continue
         doc_ids = [labels[label].id for label in dict.fromkeys(item.document_ids) if label in labels]
@@ -331,6 +331,18 @@ def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[s
             merged[key] = Candidate(id=key, name=name, document_ids=doc_ids)
             continue
         candidate.document_ids.extend(d for d in doc_ids if d not in candidate.document_ids)
+
+
+def _unslug(name: str) -> str:
+    """«robotic-process-automation» → «robotic process automation».
+
+    GigaChat пишет названия слагами через дефис. Такое «одно слово» проходит мимо проверок на длину
+    и на общее слово в конце, а точной фразой по нему статистику не найти. Трогаем только название
+    без пробелов и с двумя дефисами и больше: «sodium-ion battery» и «humanoid-robot» остаются как есть.
+    """
+    if " " in name or name.count("-") < 2:
+        return name
+    return " ".join(part for part in name.split("-") if part)
 
 
 # Длиннее этого название перестаёт быть термином и становится описанием. Замер 21.09
