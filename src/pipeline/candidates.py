@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import re
 import time
+from difflib import SequenceMatcher
+from itertools import zip_longest
 
 from pydantic import BaseModel, Field
 
@@ -39,7 +41,13 @@ log = get_logger(__name__)
 # была прямо против задачи: замер 21.09 показал, что из 12 технологий датасета, названных
 # в собранных документах, 9 встретились ровно в одном документе. Такие кандидаты оказывались
 # в самом хвосте и срезались первыми, а наверху оставались самые упоминаемые — то есть зрелые.
-# Пока предел не упирался, это ничего не портило; после ускорения чтения кандидатов стало ровно 150.
+#
+# «По времени появления» тоже оказалось срезом по очереди: на облачной модели шаг читает все
+# 500 документов и выписывает 277–294 кандидата (замер 26.09, GigaChat 2 Lite), и первые 150
+# целиком приходились на первую половину пачек. Всё найденное во второй половине выбрасывалось
+# не глядя — в том числе правильно названные технологии датасета (место №209 при пределе 150).
+# Поэтому кандидатов берём по кругу: первый из каждой пачки, потом второй из каждой и т.д. —
+# каждая группа документов получает своё место под пределом.
 #
 # Выше 150 не ставим: каждый кандидат стоит запроса статистики.
 MAX_CANDIDATES = 150
@@ -57,12 +65,17 @@ DOCS_IN_BATCH = 8
 # что собрали (MAX_DOCUMENTS в .env): чем больше документов посмотрела модель, тем больше шансов,
 # что нужная технология вообще попадёт в кандидаты. Реальную границу ставит BUDGET_S ниже.
 MAX_DOCS_FOR_LLM = 500
-# Сколько знаков аннотации кладём в промпт: дальше идёт вода, а токены на ноутбуке дорогие.
-ABSTRACT_CHARS = 300
+# Сколько знаков аннотации кладём в промпт. Было 300: токены на ноутбуке дорогие. Но в новости
+# о раунде технологию часто называют во втором-третьем предложении, после суммы и инвесторов:
+# трассировка 26.09 нашла технологии датасета, названные дальше 300-го знака, — модель их просто
+# не видела. На облачной модели лишние 300 знаков почти не добавляют времени.
+ABSTRACT_CHARS = 600
 # Собственный бюджет шага. Держим его заметно ниже бюджета конвейера (CANDIDATES_BUDGET_S):
 # отмена снаружи приходит посреди вызова модели и уносит всех уже выписанных кандидатов,
 # поэтому останавливаемся сами и возвращаем то, что успели.
-BUDGET_S = 150.0
+# 200, а не 150: с полем company и 600 знаками аннотации пачка GigaChat 2 Lite идёт 2–3 с, и за 150 с
+# шаг не дочитывал 500 документов — замер 26.09 обрезал пачки с 45-й по 63-ю.
+BUDGET_S = 200.0
 
 # Общие слова, которыми модель подменяет название технологии: «edge ai infrastructure» вместо
 # названия самого чипа, «ai agent certification» вместо технологии, которую сертифицируют. Такие записи
@@ -156,6 +169,8 @@ _STOPWORDS = {
 _SPLIT_TITLE = re.compile(r"[:;,.—–()\[\]]")
 # Номер версии или модели («Foo 3.8», «Bar 2») — признак продукта, а не технологии.
 _VERSION_NUMBER = re.compile(r"(?<![\w-])\d+(?:\.\d+)?(?![\w-])")
+# Номер модели через дефис в конце: «gpt-6», «stretch-4», «superion-256».
+_TRAILING_VERSION = re.compile(r"-\d+$")
 _WORD = re.compile(r"[^\w\-+]+", re.UNICODE)
 
 # Слишком общие названия: по ним находится обзор рынка, а не технология. Промпт их запрещает,
@@ -174,6 +189,16 @@ _TOO_BROAD = {
     "edge ai",
     "internet of things",
     "digital transformation",
+    # Замер 26.09 на GigaChat 2 Lite: эти занимали места под пределом во всех шести областях.
+    "agentic ai",
+    "ai agents",
+    "autonomous agents",
+    "autonomous ai agents",
+    "physical ai",
+    "reinforcement learning",
+    "computer vision",
+    "quantum computing",
+    "deep learning model",
     "искусственный интеллект",
     "машинное обучение",
 }
@@ -190,6 +215,9 @@ class _Candidate(BaseModel):
     """
 
     name: str = ""
+    # Куда модели положить имя компании или продукта, чтобы в name осталась технология.
+    # Без этого поля GigaChat из новости о раунде выписывал саму компанию вместо её технологии.
+    company: str | None = None
     document_ids: list[str] = Field(default_factory=list)
 
 
@@ -200,7 +228,8 @@ class _Answer(BaseModel):
 async def extract_candidates(docs: list[Document], client: LLMClient | None = None) -> list[Candidate]:
     """Выделить технологии-кандидаты из найденных документов.
 
-    Один кандидат может опираться на несколько документов; кандидаты отсортированы по числу документов.
+    Один кандидат может опираться на несколько документов. Порядок — по кругу по пачкам
+    (см. MAX_CANDIDATES): под предел попадают кандидаты из всех документов, а не только из первых.
     """
     if not docs:
         return []
@@ -223,6 +252,7 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
     chosen = _order_for_llm(docs)[:MAX_DOCS_FOR_LLM]
     batches = [chosen[i : i + DOCS_IN_BATCH] for i in range(0, len(chosen), DOCS_IN_BATCH)]
     merged: dict[str, Candidate] = {}
+    new_per_batch: list[list[str]] = []
     started = time.perf_counter()
     slowest_batch_s = 0.0
     for number, batch in enumerate(batches, start=1):
@@ -247,10 +277,15 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
             log.warning("extract_candidates: пачка %d из %d не удалась (%s) — иду дальше", number, len(batches), exc)
             continue
         slowest_batch_s = max(slowest_batch_s, time.perf_counter() - batch_started)
-        _merge(merged, answer.candidates, labels)
+        new_per_batch.append(_merge(merged, answer.candidates, labels))
     if not merged:
         raise LLMError("ни одна пачка документов не дала кандидатов")
-    return list(merged.values())
+    return [merged[key] for key in _round_robin(new_per_batch)]
+
+
+def _round_robin(per_batch: list[list[str]]) -> list[str]:
+    """Первые кандидаты всех пачек, затем вторые и т.д. — чтобы предел MAX_CANDIDATES не срезал хвост очереди."""
+    return [key for row in zip_longest(*per_batch) for key in row if key is not None]
 
 
 # На сколько новостей приходится один научный документ в очереди к модели. Новостей больше,
@@ -313,13 +348,23 @@ def _documents_block(labels: dict[str, Document]) -> str:
     )
 
 
-def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[str, Document]) -> None:
-    """Добавить кандидатов пачки к общему списку, склеивая одинаковые по slug."""
+def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[str, Document]) -> list[str]:
+    """Добавить кандидатов пачки к общему списку, склеивая одинаковые по slug. Возвращает ключи новых."""
+    added: list[str] = []
     for item in found:
-        name = _unslug(" ".join(item.name.split()))
+        # GigaChat пишет и через подчёркивание: «agentic_ai», «gemma_3» — это те же пробелы.
+        name = _unslug(" ".join(item.name.replace("_", " ").split()))
         if not _is_usable(name):
             continue
+        if item.company and len(_letters(item.company)) >= MIN_PROPER_NAME and _letters(item.company) in _letters(name):
+            log.info("extract_candidates: «%s» — это компания или продукт «%s», пропускаю", name, item.company)
+            continue
         doc_ids = [labels[label].id for label in dict.fromkeys(item.document_ids) if label in labels]
+        if doc_ids and _is_proper_name(name, [labels[label] for label in item.document_ids if label in labels]):
+            log.info(
+                "extract_candidates: «%s» в документах пишется только с заглавной — это имя, а не технология", name
+            )
+            continue
         if not doc_ids:
             # Модель не указала ни одного документа из пачки — брать такое нельзя:
             # карточка собирается только по документам кандидата.
@@ -329,8 +374,10 @@ def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[s
         candidate = merged.get(key)
         if candidate is None:
             merged[key] = Candidate(id=key, name=name, document_ids=doc_ids)
+            added.append(key)
             continue
         candidate.document_ids.extend(d for d in doc_ids if d not in candidate.document_ids)
+    return added
 
 
 def _unslug(name: str) -> str:
@@ -353,13 +400,109 @@ def _unslug(name: str) -> str:
 MAX_NAME_WORDS = 4
 
 
+# Заголовок, где с заглавной почти все слова (так пишут SiliconANGLE, The AI Insider), ничего не говорит
+# о том, имя это или термин: «Startup Scales Solid-State Hydrogen Storage» — термин с заглавных.
+TITLE_CASE_SHARE = 0.7
+
+
+def _is_proper_name(name: str, docs: list[Document]) -> bool:
+    """Кандидат — имя собственное или содержит его: компания, продукт, человек.
+
+    Замер 26.09 на GigaChat 2 Lite: под пределом 150 примерно половина мест была занята именами —
+    компаниями из новостей о раундах («crusoe», «snorkel ai»), продуктами («mistral ai model»),
+    даже именем основателя, — хотя промпт это запрещает. Признаки:
+
+    - название в тексте документа пишется только с заглавной («HarvestIQ», «Baya Systems» — в том
+      числе когда модель склеила слова: «bayasystems»), а технологию хоть раз пишут строчными;
+    - название содержит имя собственное из того же документа: «Mistral AI» в «mistral ai model».
+
+    Заголовки «всё с заглавной» (SiliconANGLE, The AI Insider) в расчёт не берём: в них термин тоже
+    с заглавных. Аббревиатуры (LLM, SASE) — не имена.
+    """
+    words = [w for w in re.split(r"[\s_-]+", name) if w]
+    if not words or all(w.isupper() for w in words):
+        return False
+    glued = "".join(words)
+    # Буквы названия подряд, между ними — пробел, дефис или ничего: «bayasystems» ~ «Baya Systems».
+    pattern = re.compile(r"(?<!\w)" + r"[\s_-]?".join(re.escape(ch) for ch in glued) + r"(?!\w)", re.IGNORECASE)
+    texts = [text for doc in docs for text in _texts_to_judge(doc)]
+    seen = [m.group(0) for text in texts for m in pattern.finditer(text)]
+    if seen and all(_capitalized(found) for found in seen):
+        return True
+    key = _letters(glued)
+    if not seen and len(words) == 1 and _misspelled_name(key, texts):
+        return True
+    return any(len(proper) >= MIN_PROPER_NAME and proper in key for text in texts for proper in _proper_names(text))
+
+
+# Короче этого имя собственное не ищем внутри названия: «AI», «Arm», «Box» дадут ложные совпадения.
+MIN_PROPER_NAME = 5
+# Смешанный регистр внутри слова — признак имени: «HarvestIQ», «GitHub».
+_MIXED_CASE = re.compile(r"[a-z]+[A-Z]|[A-Z][a-z0-9]+[A-Z]")
+
+
+def _texts_to_judge(doc: Document) -> list[str]:
+    return [doc.abstract or ""] + ([] if _is_title_case(doc.title) else [doc.title])
+
+
+def _proper_names(text: str) -> set[str]:
+    """Имена собственные в тексте, которые не спутать с обычным словом.
+
+    Берём подряд идущие слова с заглавной внутри предложения (не первое слово), аббревиатура может
+    их продолжать: «Mistral AI», «Sumo Logic». Одиночное слово с заглавной («Quantum» из «IBM Quantum»)
+    не берём — это слишком часто обычное слово; одиночное слово засчитываем только со смешанным
+    регистром («HarvestIQ»).
+    """
+    names = set()
+    for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
+        run: list[str] = []
+        for i, token in enumerate([*sentence.split(), ""]):
+            word = re.sub(r"['’]s$", "", token.strip(",.;:()\"'«»“”’"))
+            capital = bool(word) and i > 0 and word[0].isupper() and not word.isupper()
+            if capital or (run and word.isupper() and len(word) > 1):
+                run.append(word)
+                continue
+            if len(run) >= 2 or (len(run) == 1 and _MIXED_CASE.search(run[0])):
+                names.add(_letters("".join(run)))
+            run = []
+    return names
+
+
+# Насколько похоже должно быть однословное название на имя из документа, чтобы считать его опечаткой
+# в имени: 26.09 GigaChat дважды переврал имя компании из заголовка, и оно прошло мимо проверки.
+MISSPELLING_SIMILARITY = 0.8
+
+
+def _misspelled_name(key: str, texts: list[str]) -> bool:
+    """Однословное название — это имя с заглавной из документа, написанное с опечаткой."""
+    if len(key) < MIN_PROPER_NAME:
+        return False
+    capitals = {_letters(w) for text in texts for w in re.findall(r"\b[A-Z][\w.]+", text)}
+    return any(SequenceMatcher(None, key, word).ratio() >= MISSPELLING_SIMILARITY for word in capitals if word)
+
+
+def _letters(text: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def _capitalized(text: str) -> bool:
+    """Все слова начинаются с заглавной и слово не целиком из заглавных (аббревиатура — не имя)."""
+    words = [w for w in re.split(r"[\s_-]+", text) if w]
+    return all(w[0].isupper() for w in words) and not all(w.isupper() for w in words)
+
+
+def _is_title_case(title: str) -> bool:
+    words = [w for w in title.split() if len(w) > 3 and w[0].isalpha()]
+    return bool(words) and sum(w[0].isupper() for w in words) / len(words) >= TITLE_CASE_SHARE
+
+
 def _is_usable(name: str) -> bool:
     """Отсеять пустое, слишком общее и похожее на название продукта — такое кандидатом быть не может."""
     words = name.split()
     if not (1 <= len(words) <= MAX_NAME_WORDS):
         log.info("extract_candidates: «%s» — это описание, а не термин, пропускаю", name)
         return False
-    if name.lower() in _TOO_BROAD:
+    if name.lower().replace("-", " ") in _TOO_BROAD:
         log.info("extract_candidates: «%s» — слишком широкая область, пропускаю", name)
         return False
     if _looks_like_product(name):
@@ -378,7 +521,7 @@ def _looks_like_product(name: str) -> bool:
     моделей, устройств и платформ. Промпт требует писать термин строчными буквами (заглавные — только
     в аббревиатурах), поэтому имя собственное в середине названия и номер версии — надёжные признаки.
     """
-    if _VERSION_NUMBER.search(name):
+    if _VERSION_NUMBER.search(name) or _TRAILING_VERSION.search(name):
         return True
     return any(word[:1].isupper() and not word.isupper() for word in name.split()[1:])
 
@@ -436,9 +579,28 @@ def _name_from_title(title: str) -> str:
 
 
 def _slug(name: str) -> str:
-    """Ключ склейки и id кандидата: 'Zero-knowledge KYC verification' → 'zero-knowledge-kyc-verification'."""
-    parts = [_WORD.sub("", w.lower()) for w in name.split()]
-    return "-".join(p for p in parts if p)
+    """Ключ склейки и id кандидата: 'Zero-knowledge KYC verification' → 'zero-knowledge-kyc-verification'.
+
+    Дефис и пробел — одно и то же, последнее слово — в единственном числе: «algae bioreactors»,
+    «algae-bioreactors» и «algae bioreactor» склеиваются в одного кандидата, а не занимают три места.
+    """
+    parts = [p for p in (_WORD.sub("", w.lower()) for w in name.replace("-", " ").split()) if p]
+    if parts:
+        parts[-1] = _singular(parts[-1])
+    return "-".join(parts)
+
+
+def _singular(word: str) -> str:
+    """batteries → battery, switches → switch, robots → robot; robotics, analysis, glass — как есть."""
+    if len(word) <= 3 or word.endswith(("ss", "us", "is", "ics")):
+        return word
+    if word.endswith("ies"):
+        return word[:-3] + "y"
+    if word.endswith(("ches", "shes", "xes", "sses")):
+        return word[:-2]
+    if word.endswith("s"):
+        return word[:-1]
+    return word
 
 
 __all__ = ["extract_candidates", "warn_on_long_names"]
