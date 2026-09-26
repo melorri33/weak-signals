@@ -52,6 +52,12 @@ ERROR_TEXT_LIMIT = 400
 # Повторы на 429 «Too Many Requests»: паузы 2, 4, 8, 16 с — хватает, чтобы освободился поток.
 RATE_LIMIT_RETRIES = 4
 RATE_LIMIT_BACKOFF_S = 2.0
+# Те же повторы на кратковременный обрыв по дороге: 502/503/504 от прокси или шлюза и разрыв
+# соединения. 26.09 туннель до прокси моргнул, и все 63 пачки области упали за миллисекунды
+# с «503 Forwarding failure» — без повтора ночной прогон терял бы так целую область.
+# Таймаут не повторяем: он и так длится минуты.
+RETRY_STATUSES = {429, 502, 503, 504}
+_RETRY_ERRORS = (httpx.ConnectError, httpx.ProxyError, httpx.RemoteProtocolError, httpx.ReadError)
 
 # Разрешённые ТЗ модели → название в ТЗ. Остальные модели сервиса (GigaChat-Max, -Plus и т.п.) — не из списка.
 ALLOWED_MODELS = {
@@ -199,11 +205,19 @@ class GigaChatBackend:
     async def _post(self, body: dict[str, Any], timeout_s: float) -> dict[str, Any]:
         async with _gate(self.max_concurrency):
             for attempt in range(RATE_LIMIT_RETRIES + 1):
-                response = await self._send(body, timeout_s)
-                if response.status_code != httpx.codes.TOO_MANY_REQUESTS or attempt == RATE_LIMIT_RETRIES:
-                    break
+                last = attempt == RATE_LIMIT_RETRIES
+                try:
+                    response = await self._send(body, timeout_s)
+                except LLMError as exc:
+                    if last or not isinstance(exc.__cause__, _RETRY_ERRORS):
+                        raise
+                    reason = "обрыв соединения"
+                else:
+                    if response.status_code not in RETRY_STATUSES or last:
+                        break
+                    reason = str(response.status_code)
                 pause = RATE_LIMIT_BACKOFF_S * 2**attempt
-                log.warning("%s: 429, повтор через %.0f с (попытка %d)", self.model, pause, attempt + 1)
+                log.warning("%s: %s, повтор через %.0f с (попытка %d)", self.model, reason, pause, attempt + 1)
                 await asyncio.sleep(pause)
         if response.status_code == httpx.codes.UNAUTHORIZED:
             _tokens.pop(self.credentials, None)  # токен отозван раньше срока — следующий вызов возьмёт новый
