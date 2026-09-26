@@ -23,6 +23,7 @@ from pydantic import BaseModel, ValidationError
 from src.common.config import get_settings
 from src.common.logs import get_logger, model_timer
 from src.llm.errors import LLMError
+from src.llm.json_repair import repair_json
 from src.llm.providers import ChatBackend, make_backend
 
 log = get_logger(__name__)
@@ -73,7 +74,7 @@ class LLMClient:
         for attempt in range(RETRIES + 1):
             raw = await self._chat(step=step, messages=messages, json_schema=json_schema, max_tokens=max_tokens)
             try:
-                return schema.model_validate_json(raw)
+                return _validate(schema, raw, step)
             except (ValidationError, ValueError) as exc:
                 last_error = str(exc)
                 log.warning("step=%s попытка %d: ответ не прошёл схему: %s", step, attempt + 1, last_error[:300])
@@ -159,6 +160,27 @@ def _cache_put(key: str, content: str) -> None:
         (CACHE_DIR / f"{key}.txt").write_text(content, encoding="utf-8")
     except OSError as exc:  # кэш — удобство, а не обязательное условие работы
         log.warning("Не смог записать кэш ответа модели: %s", exc)
+
+
+def _validate(schema: type[T], raw: str, step: str) -> T:
+    """Ответ как есть; не прошёл — после починки частых огрехов JSON (src/llm/json_repair.py).
+
+    Ошибку отдаём от исходного ответа: её модель увидит в повторной попытке.
+    """
+    try:
+        return schema.model_validate_json(raw)
+    except (ValidationError, ValueError):
+        repaired = repair_json(raw)
+        if repaired == raw:
+            raise
+        try:
+            answer = schema.model_validate_json(repaired)
+        except (ValidationError, ValueError):
+            pass
+        else:
+            log.info("step=%s ответ прошёл схему после починки JSON", step)
+            return answer
+        raise
 
 
 def _messages(prompt: str, system: str | None) -> list[dict[str, str]]:
