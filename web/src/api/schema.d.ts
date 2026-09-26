@@ -44,6 +44,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/search/{run_id}/evidence": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Get Evidence
+     * @description Признаки и публикации по годам для всех кандидатов прогона — для карты сигналов и графиков.
+     */
+    get: operations["get_evidence_search__run_id__evidence_get"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/runs": {
     parameters: {
       query?: never
@@ -108,6 +128,71 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /**
+     * CandidateEvidence
+     * @description Всё измеренное по одному кандидату. Годовые ряды пустые, если статистика не успела.
+     */
+    CandidateEvidence: {
+      /** Candidate Id */
+      candidate_id: string
+      /** Name */
+      name: string
+      /** Name Ru */
+      name_ru?: string | null
+      features: components["schemas"]["CandidateFeatures"]
+      /** Pubs By Year */
+      pubs_by_year?: {
+        [key: string]: number
+      }
+      /** Patents By Year */
+      patents_by_year?: {
+        [key: string]: number
+      } | null
+      /** News By Year */
+      news_by_year?: {
+        [key: string]: number
+      } | null
+    }
+    /**
+     * CandidateFeatures
+     * @description Признаки кандидата. Одинаково считаются для датасета и для открытого поиска.
+     */
+    CandidateFeatures: {
+      /** Candidate Id */
+      candidate_id: string
+      /** Total Pubs */
+      total_pubs?: number | null
+      /**
+       * Growth 3Y
+       * @description среднегодовой рост публикаций за 3 года
+       */
+      growth_3y?: number | null
+      /** First Seen Year */
+      first_seen_year?: number | null
+      /** Patents Total */
+      patents_total?: number | null
+      /** News Total */
+      news_total?: number | null
+      /** News To Science Ratio */
+      news_to_science_ratio?: number | null
+      /** Distinct Orgs */
+      distinct_orgs?: number | null
+      /** Distinct Sources */
+      distinct_sources?: number | null
+      /** Has Wikipedia */
+      has_wikipedia?: boolean | null
+      /** Has Standard */
+      has_standard?: boolean | null
+      /** Stage */
+      stage?: ("research" | "prototype" | "product" | "mass") | null
+      /**
+       * Extra
+       * @description прочие признаки ML
+       */
+      extra?: {
+        [key: string]: number | null
+      }
+    }
     /**
      * Explanation
      * @description Один «ключевой предиктор» — вклад признака в решение модели.
@@ -204,6 +289,23 @@ export interface components {
        */
       ts?: string
     }
+    /** RunEvidence */
+    RunEvidence: {
+      /** Run Id */
+      run_id: string
+      /** Candidates */
+      candidates?: components["schemas"]["CandidateEvidence"][]
+    }
+    /**
+     * RunLeader
+     * @description Технология из начала выдачи — чтобы в списке поисков было видно, что нашлось.
+     */
+    RunLeader: {
+      /** Name */
+      name: string
+      /** Score */
+      score: number
+    }
     /**
      * RunSummary
      * @description Строка в списке прогонов: чтобы показать список, не нужно тянуть все карточки.
@@ -235,6 +337,11 @@ export interface components {
       signals: number
       /** Confident Signals */
       confident_signals: number
+      /**
+       * Leaders
+       * @default []
+       */
+      leaders: components["schemas"]["RunLeader"][]
     }
     /** ScoredCandidate */
     ScoredCandidate: {
@@ -504,6 +611,37 @@ export interface operations {
         }
         content: {
           "application/json": components["schemas"]["SearchResult"]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"]
+        }
+      }
+    }
+  }
+  get_evidence_search__run_id__evidence_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        run_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["RunEvidence"]
         }
       }
       /** @description Validation Error */

@@ -25,7 +25,9 @@ export function NotFoundPage({
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button render={<Link to="/" />}>Новый поиск</Button>
+        <Button nativeButton={false} render={<Link to="/" />}>
+          Новый поиск
+        </Button>
       </EmptyContent>
     </Empty>
   )
