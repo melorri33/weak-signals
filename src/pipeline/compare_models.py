@@ -6,6 +6,7 @@
     python -m src.pipeline.compare_models gigachat:GigaChat-2 yandexgpt:yandexgpt-5-lite ollama:qwen3:4b
     python -m src.pipeline.compare_models ollama:qwen3:4b --domains Финтех   # короткая проба
     python -m src.pipeline.compare_models --report-only                      # пересобрать отчёт
+    python -m src.pipeline.compare_models ollama:qwen3:4b --runs-dir data/model_runs_pass2  # второй проход
 
 - Результат каждой области — data/model_runs/<провайдер>__<модель>/<область>.json. Готовая (успешная)
   область при повторном запуске пропускается: упал ночью — запусти ту же команду, доделается только недостающее.
@@ -237,20 +238,28 @@ def report_md(rows: list[Row]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_report() -> str:
-    report = report_md(load_rows(reference=load_reference_if_present()))
-    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    REPORT_PATH.write_text(report, encoding="utf-8")
+def report_path(root: Path) -> Path:
+    """data/model_runs → data/model_compare.md; другая папка прогонов → отчёт рядом с ней."""
+    return REPORT_PATH if root == RUNS_DIR else root.with_suffix(".md")
+
+
+def write_report(root: Path = RUNS_DIR) -> str:
+    report = report_md(load_rows(root, reference=load_reference_if_present()))
+    path = report_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(report, encoding="utf-8")
     return report
 
 
-def _child(spec: str, domains: list[str] | None) -> None:
+def _child(spec: str, domains: list[str] | None, root: Path) -> None:
     """Запустить одну модель отдельным процессом с её LLM_PROVIDER и LLM_MODEL в окружении."""
     provider, model = parse_spec(spec)
     env = {**os.environ, "LLM_PROVIDER": provider, "LLM_MODEL": model}
     cmd = [sys.executable, "-m", "src.pipeline.compare_models", "--one", spec]
     if domains:
         cmd += ["--domains", *domains]
+    if root != RUNS_DIR:
+        cmd += ["--runs-dir", str(root)]
     code = subprocess.run(cmd, env=env, check=False).returncode
     if code != 0:
         log.error("Модель %s завершилась с кодом %d — иду к следующей", spec, code)
@@ -261,6 +270,7 @@ def main() -> None:
     ap.add_argument("models", nargs="*", help="провайдер:модель, например ollama:qwen3:4b gigachat:GigaChat-2")
     ap.add_argument("--domains", nargs="+", help="только эти области (по умолчанию все 6)")
     ap.add_argument("--report-only", action="store_true", help="только пересобрать отчёт по готовым прогонам")
+    ap.add_argument("--runs-dir", type=Path, default=RUNS_DIR, help=f"куда класть прогоны (по умолчанию {RUNS_DIR})")
     ap.add_argument("--one", help=argparse.SUPPRESS)
     args = ap.parse_args()
 
@@ -270,7 +280,7 @@ def main() -> None:
     if args.one:
         provider, model = parse_spec(args.one)
         domains = {d: q for d, q in all_domains.items() if not args.domains or d in args.domains}
-        asyncio.run(run_model(provider, model, domains))
+        asyncio.run(run_model(provider, model, domains, args.runs_dir))
         return
     if not args.report_only:
         if not args.models:
@@ -278,9 +288,9 @@ def main() -> None:
         for spec in args.models:
             parse_spec(spec)  # опечатку в списке видно сразу, а не через час
         for spec in args.models:
-            _child(spec, args.domains)
-    print(write_report())
-    print(f"Отчёт: {REPORT_PATH}; прогоны: {RUNS_DIR}")
+            _child(spec, args.domains, args.runs_dir)
+    print(write_report(args.runs_dir))
+    print(f"Отчёт: {report_path(args.runs_dir)}; прогоны: {args.runs_dir}")
 
 
 if __name__ == "__main__":

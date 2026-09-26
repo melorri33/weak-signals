@@ -76,3 +76,8 @@ def test_report_counts_top_and_llm_calls(tmp_path: Path):
     report = cm.report_md([row])
     assert "| gigachat:GigaChat-2 | 1 | — |" in report  # без датасета «совпало» пустое, а не ноль
     assert "нет data/*.xlsx" in report
+
+
+def test_report_lies_next_to_its_runs_dir(tmp_path: Path):
+    assert cm.report_path(cm.RUNS_DIR) == cm.REPORT_PATH
+    assert cm.report_path(tmp_path / "model_runs_pass2") == tmp_path / "model_runs_pass2.md"
