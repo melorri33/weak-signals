@@ -36,6 +36,7 @@ from src.llm.expand_query import expand_query
 from src.model import score
 from src.pipeline import deps
 from src.pipeline.candidates import extract_candidates
+from src.pipeline.topic import off_topic
 
 log = get_logger(__name__)
 
@@ -92,6 +93,9 @@ SECOND_ROUND_CANDIDATES = TOP_N + 10
 SECOND_ROUND_DOCS = 8
 SECOND_ROUND_BUDGET_S = 120.0
 SECOND_ROUND_CONCURRENCY = 4
+# Проверка темы — один вызов модели на 45 названий: GigaChat 2 Lite отвечает за 5-7 с, qwen3:8b
+# на ноутбуке — до минуты. Не успела — идём без неё: лишний кандидат лучше сорванного прогона.
+TOPIC_BUDGET_S = 90.0
 
 STAGE_START = "начинаем"
 STAGE_DONE = "готово"
@@ -158,6 +162,7 @@ async def run(
     # и считает эмбеддинги на процессоре. Внутри цикла это минутами блокировало API — интерфейс не мог
     # даже узнать шаг прогона. Журнал моделей не теряется: to_thread копирует контекст с тем же списком.
     scored = await asyncio.to_thread(_score, kept, features_kept)
+    scored = await _drop_off_topic(query, scored, result)
 
     result.scored = scored
 
@@ -181,6 +186,14 @@ async def run(
         result.duration_s,
     )
     return result
+
+
+async def _drop_off_topic(query: str, scored: list[ScoredCandidate], result: SearchResult) -> list[ScoredCandidate]:
+    """Убрать из верха списка технологии чужой области; они уходят в отсеянные с причиной."""
+    decisions = await _with_budget("check_topic", TOPIC_BUDGET_S, off_topic(query, scored), default=[])
+    result.excluded.extend(decisions)
+    dropped = {decision.candidate_id for decision in decisions}
+    return [item for item in scored if item.candidate_id not in dropped]
 
 
 def _mentions_name(doc: Document, name: str) -> bool:
