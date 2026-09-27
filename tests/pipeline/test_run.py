@@ -8,6 +8,7 @@ from src.common.schemas import (
     TOP_N,
     Candidate,
     Document,
+    FilterDecision,
     ScoredCandidate,
     SearchResult,
     SignalCard,
@@ -443,3 +444,25 @@ def test_single_word_names_are_left_alone():
     ]
 
     assert len(drop_name_variants(scored)) == 2
+
+
+async def test_off_topic_candidate_goes_to_excluded(monkeypatch: pytest.MonkeyPatch):
+    async def first_is_alien(query: str, scored: list[ScoredCandidate]) -> list[FilterDecision]:
+        top = scored[0]
+        return [
+            FilterDecision(
+                candidate_id=top.candidate_id,
+                name=top.name,
+                excluded=True,
+                reason_code="noise",
+                reason_text="Не по теме запроса: медицина",
+            )
+        ]
+
+    monkeypatch.setattr("src.pipeline.run.off_topic", first_is_alien)
+    result = await run("перспективные решения в финтехе")
+
+    alien = [d for d in result.excluded if d.reason_text == "Не по теме запроса: медицина"]
+    assert len(alien) == 1
+    assert alien[0].candidate_id not in {s.candidate_id for s in result.scored}
+    assert alien[0].candidate_id not in {c.candidate_id for c in result.top}
