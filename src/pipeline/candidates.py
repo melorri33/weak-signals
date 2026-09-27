@@ -251,6 +251,8 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
     """Опросить модель по пачкам документов и склеить ответы."""
     chosen = _order_for_llm(docs)[:MAX_DOCS_FOR_LLM]
     batches = [chosen[i : i + DOCS_IN_BATCH] for i in range(0, len(chosen), DOCS_IN_BATCH)]
+    # Все тексты, что видит модель, — чтобы проверить, пишут ли название где-нибудь строчными.
+    corpus = "\n".join(f"{doc.title}\n{doc.abstract or ''}" for doc in chosen)
     merged: dict[str, Candidate] = {}
     new_per_batch: list[list[str]] = []
     started = time.perf_counter()
@@ -277,7 +279,7 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
             log.warning("extract_candidates: пачка %d из %d не удалась (%s) — иду дальше", number, len(batches), exc)
             continue
         slowest_batch_s = max(slowest_batch_s, time.perf_counter() - batch_started)
-        new_per_batch.append(_merge(merged, answer.candidates, labels))
+        new_per_batch.append(_merge(merged, answer.candidates, labels, corpus))
     if not merged:
         raise LLMError("ни одна пачка документов не дала кандидатов")
     return [merged[key] for key in _round_robin(new_per_batch)]
@@ -348,7 +350,9 @@ def _documents_block(labels: dict[str, Document]) -> str:
     )
 
 
-def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[str, Document]) -> list[str]:
+def _merge(
+    merged: dict[str, Candidate], found: list[_Candidate], labels: dict[str, Document], corpus: str = ""
+) -> list[str]:
     """Добавить кандидатов пачки к общему списку, склеивая одинаковые по slug. Возвращает ключи новых."""
     added: list[str] = []
     for item in found:
@@ -360,7 +364,7 @@ def _merge(merged: dict[str, Candidate], found: list[_Candidate], labels: dict[s
             log.info("extract_candidates: «%s» — это компания или продукт «%s», пропускаю", name, item.company)
             continue
         doc_ids = [labels[label].id for label in dict.fromkeys(item.document_ids) if label in labels]
-        if doc_ids and _is_proper_name(name, [labels[label] for label in item.document_ids if label in labels]):
+        if doc_ids and _is_proper_name(name, [labels[label] for label in item.document_ids if label in labels], corpus):
             log.info(
                 "extract_candidates: «%s» в документах пишется только с заглавной — это имя, а не технология", name
             )
@@ -405,7 +409,7 @@ MAX_NAME_WORDS = 4
 TITLE_CASE_SHARE = 0.7
 
 
-def _is_proper_name(name: str, docs: list[Document]) -> bool:
+def _is_proper_name(name: str, docs: list[Document], corpus: str = "") -> bool:
     """Кандидат — имя собственное или содержит его: компания, продукт, человек.
 
     Замер 26.09 на GigaChat 2 Lite: под пределом 150 примерно половина мест была занята именами —
@@ -418,21 +422,47 @@ def _is_proper_name(name: str, docs: list[Document]) -> bool:
 
     Заголовки «всё с заглавной» (SiliconANGLE, The AI Insider) в расчёт не берём: в них термин тоже
     с заглавных. Аббревиатуры (LLM, SASE) — не имена.
+
+    Замер 27.09: в документах кандидата термин тоже бывает только с заглавной — в начале предложения
+    («Embodied AI, also known as…»), в названии отчёта («The Deepfake Detection Market»). Поэтому
+    именем не считаем то, что хоть раз написано строчными где-нибудь в corpus — во всех документах,
+    которые видела модель: компанию строчными не пишут, технологию — пишут.
     """
     words = [w for w in re.split(r"[\s_-]+", name) if w]
     if not words or all(w.isupper() for w in words):
         return False
     glued = "".join(words)
-    # Буквы названия подряд, между ними — пробел, дефис или ничего: «bayasystems» ~ «Baya Systems».
-    pattern = re.compile(r"(?<!\w)" + r"[\s_-]?".join(re.escape(ch) for ch in glued) + r"(?!\w)", re.IGNORECASE)
+    pattern = _spelling(glued)
     texts = [text for doc in docs for text in _texts_to_judge(doc)]
     seen = [m.group(0) for text in texts for m in pattern.finditer(text)]
-    if seen and all(_capitalized(found) for found in seen):
+    if seen and all(_capitalized(found) for found in seen) and not _term_elsewhere(len(words), pattern, corpus):
         return True
     key = _letters(glued)
     if not seen and len(words) == 1 and _misspelled_name(key, texts):
         return True
-    return any(len(proper) >= MIN_PROPER_NAME and proper in key for text in texts for proper in _proper_names(text))
+    names = {proper: size for text in texts for proper, size in _proper_names(text).items()}
+    return any(
+        len(proper) >= MIN_PROPER_NAME and proper in key and not _term_elsewhere(size, _spelling(proper), corpus)
+        for proper, size in names.items()
+    )
+
+
+def _spelling(letters: str) -> re.Pattern[str]:
+    """Буквы названия подряд, между ними — пробел, дефис или ничего: «bayasystems» ~ «Baya Systems».
+
+    Адрес сайта и упоминание не в счёт: «harvestiq.com» и «@harvestiq» пишут строчными и у компаний.
+    """
+    spelled = r"[\s_-]?".join(re.escape(ch) for ch in letters)
+    return re.compile(r"(?<![\w@/.])" + spelled + r"(?!\w|\.\w)", re.IGNORECASE)
+
+
+def _term_elsewhere(words: int, pattern: re.Pattern[str], corpus: str) -> bool:
+    """Название из нескольких слов хоть раз написано строчными — значит, это термин, а не имя.
+
+    Одно слово так не проверяем: «loop», «operator», «era» строчными пишут всегда, а с заглавной это
+    продукты; «OpenAI», «VisionOS» — имена при любом написании рядом.
+    """
+    return words > 1 and any(found.group(0)[0].islower() for found in pattern.finditer(corpus))
 
 
 # Короче этого имя собственное не ищем внутри названия: «AI», «Arm», «Box» дадут ложные совпадения.
@@ -441,19 +471,25 @@ MIN_PROPER_NAME = 5
 _MIXED_CASE = re.compile(r"[a-z]+[A-Z]|[A-Z][a-z0-9]+[A-Z]")
 
 
+# Хвост WordPress-ленты: «The post <заголовок с заглавных> appeared first on <сайт>.» — есть у трети
+# новостей (замер 27.09: 1451 из 4049). Заголовок с заглавных в тексте — не признак имени.
+_RSS_TAIL = re.compile(r"The post .*?appeared first on.*$", re.DOTALL)
+
+
 def _texts_to_judge(doc: Document) -> list[str]:
-    return [doc.abstract or ""] + ([] if _is_title_case(doc.title) else [doc.title])
+    abstract = _RSS_TAIL.sub("", doc.abstract or "")
+    return [abstract] + ([] if _is_title_case(doc.title) else [doc.title])
 
 
-def _proper_names(text: str) -> set[str]:
+def _proper_names(text: str) -> dict[str, int]:
     """Имена собственные в тексте, которые не спутать с обычным словом.
 
     Берём подряд идущие слова с заглавной внутри предложения (не первое слово), аббревиатура может
     их продолжать: «Mistral AI», «Sumo Logic». Одиночное слово с заглавной («Quantum» из «IBM Quantum»)
     не берём — это слишком часто обычное слово; одиночное слово засчитываем только со смешанным
-    регистром («HarvestIQ»).
+    регистром («HarvestIQ»). Возвращает буквы имени и число слов в нём.
     """
-    names = set()
+    names: dict[str, int] = {}
     for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
         run: list[str] = []
         for i, token in enumerate([*sentence.split(), ""]):
@@ -463,7 +499,7 @@ def _proper_names(text: str) -> set[str]:
                 run.append(word)
                 continue
             if len(run) >= 2 or (len(run) == 1 and _MIXED_CASE.search(run[0])):
-                names.add(_letters("".join(run)))
+                names[_letters("".join(run))] = len(run)
             run = []
     return names
 
