@@ -17,6 +17,7 @@ from src.collectors.dedupe import dedupe
 from src.collectors.http import safe_call, user_agent
 from src.common.config import get_settings
 from src.common.logs import get_logger
+from src.common.phrases import is_fresh_phrase
 from src.common.schemas import Document
 
 log = get_logger(__name__)
@@ -48,6 +49,8 @@ async def collect(phrases: list[str], limit: int = 500) -> list[Document]:
                 call = asyncio.ensure_future(news.search_feed(feed, phrase, settings, client, errors, sink))
                 tasks[call] = "news"
                 news_sinks[call] = sink
+            if is_fresh_phrase(phrase):
+                continue  # фраза свежести («robotics startup raises») — только новостям, наука по ней приносит мусор
             for source, search in (("openalex", openalex.search), ("arxiv", arxiv.search)):
                 call = asyncio.ensure_future(
                     safe_call(source, lambda s=search, p=phrase: s(p, settings, client), errors)

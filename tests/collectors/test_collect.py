@@ -213,3 +213,20 @@ async def test_budget_keeps_news_pages_received_before_cancel(monkeypatch: pytes
     docs = await collect_module.collect(["quantum sensing"])
 
     assert [d.id for d in docs] == ["bing.com:page-1"]
+
+
+async def test_fresh_phrase_goes_only_to_news(monkeypatch: pytest.MonkeyPatch):
+    """«energy storage startup raises» — фраза свежести: научный поиск по ней приносит мусор."""
+    asked: list[str] = []
+
+    async def fake_science(phrase, settings, client, limit=200):
+        asked.append(phrase)
+        return []
+
+    monkeypatch.setattr(openalex, "search", fake_science)
+    monkeypatch.setattr(arxiv, "search", fake_science)
+
+    await collect_module.collect(["sodium-ion battery", "energy storage startup raises"], limit=10)
+
+    assert asked.count("sodium-ion battery") == 2
+    assert "energy storage startup raises" not in asked

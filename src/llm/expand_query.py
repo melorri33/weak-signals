@@ -11,7 +11,9 @@ import re
 
 from pydantic import BaseModel, Field
 
+from src.common.config import get_settings
 from src.common.logs import get_logger
+from src.common.phrases import fresh_phrases
 from src.llm.client import LLMClient, LLMError
 from src.llm.prompt_loader import render
 
@@ -107,20 +109,27 @@ _EN_SUFFIXES = ("emerging technology", "early stage research", "novel method", "
 
 
 class _Phrases(BaseModel):
-    """Схема ответа модели."""
+    """Схема ответа модели. area — область запроса по-английски, для фраз свежести."""
 
+    area: str = ""
     phrases: list[str] = Field(default_factory=list)
 
 
 async def expand_query(query: str, client: LLMClient | None = None) -> list[str]:
-    """Получить 10–18 поисковых фраз на русском и английском по свободному запросу."""
+    """Получить 10–18 поисковых фраз на русском и английском по свободному запросу.
+
+    Сверх них — фразы свежести по области запроса (src/common/phrases.py): фразы модели — это темы
+    из её памяти, то есть устоявшееся, а ранние технологии живут в свежих новостях о стартапах.
+    """
     query = query.strip()
     if not query:
         return []
+    area = ""
     try:
         client = client or LLMClient.from_settings()
         answer = await client.ask_json(step="expand_query", prompt=render("expand_query", query=query), schema=_Phrases)
         phrases = _clean(answer.phrases)
+        area = _area(answer.area)
     except LLMError as exc:
         log.warning("expand_query: LLM не помогла (%s) — беру фразы из запроса", exc)
         phrases = []
@@ -129,7 +138,20 @@ async def expand_query(query: str, client: LLMClient | None = None) -> list[str]
     if len(phrases) < MIN_PHRASES:
         log.warning("expand_query: годных фраз %d, добираю простыми вариантами запроса", len(phrases))
         phrases = _clean([*phrases, *_fallback_phrases(query)])
-    return phrases[:MAX_PHRASES]
+    phrases = phrases[:MAX_PHRASES]
+    if get_settings().fresh_phrases and area:
+        fresh = [p for p in fresh_phrases(area) if p not in phrases]
+        log.info("expand_query: область «%s» — фраз свежести %d", area, len(fresh))
+        phrases = [*phrases, *fresh]
+    return phrases
+
+
+def _area(raw: str) -> str:
+    """Область для фраз свежести: одно–три английских слова, без кириллицы и лишних знаков. Иначе пусто."""
+    words = re.sub(r"[^A-Za-z0-9 \-]", " ", raw or "").split()
+    if not words or len(words) > 3 or _CYRILLIC_RE.search(raw or ""):
+        return ""
+    return " ".join(words).lower()
 
 
 def _is_latin(phrase: str) -> bool:

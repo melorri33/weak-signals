@@ -473,3 +473,53 @@ async def test_name_that_is_the_company_itself_is_dropped():
     }
     names = [c.name for c in await extract_candidates(docs, client=_FakeClient([answer]))]
     assert names == ["soil moisture sensing"]
+
+
+def test_startup_news_read_first():
+    """Новости о стартапах идут первыми среди новостей, даже если они старше: через них в документах
+    видны технологии датасета (трассировка 27.09 — 58 упоминаний из 68)."""
+    from datetime import date
+
+    old_round = _doc("a", "Voltara raises $12M to scale sodium-ion batteries", SourceType.NEWS)
+    old_round.published = date(2026, 1, 1)
+    fresh_review = _doc("b", "Why grid storage matters this winter", SourceType.NEWS)
+    fresh_review.published = date(2026, 9, 1)
+    paper = _doc("c", "Layered oxide cathodes for sodium-ion cells")
+
+    order = candidates_module._order_for_llm([fresh_review, paper, old_round])
+
+    assert [d.id for d in order] == ["a", "c", "b"]
+
+
+async def test_rescue_names_technology_behind_company():
+    """Модель выписала компанию — второй вопрос по этому документу возвращает технологию за ней."""
+    docs = [_doc("a", "Voltara raises $12M to scale sodium-ion batteries", SourceType.NEWS)]
+    client = _FakeClient(
+        [
+            {"candidates": [{"name": "Voltara", "company": "Voltara", "document_ids": ["d1"]}]},
+            {"candidates": [{"name": "sodium-ion battery", "document_ids": ["d1"]}]},
+        ]
+    )
+
+    candidates = await extract_candidates(docs, client=client)
+
+    assert [c.name for c in candidates] == ["sodium-ion battery"]
+    assert "Voltara" in client.prompts[1] and "about" in client.prompts[1]
+
+
+async def test_rescue_asks_about_startup_news_with_nothing_extracted():
+    docs = [_doc("a", "Voltara raises $12M to scale sodium-ion batteries", SourceType.NEWS)]
+    client = _FakeClient([{"candidates": []}, {"candidates": [{"name": "sodium-ion battery", "document_ids": ["d1"]}]}])
+
+    candidates = await extract_candidates(docs, client=client)
+
+    assert [c.name for c in candidates] == ["sodium-ion battery"]
+
+
+async def test_no_rescue_when_document_already_has_candidate():
+    docs = [_doc("a", "Voltara raises $12M to scale sodium-ion batteries", SourceType.NEWS)]
+    client = _FakeClient([{"candidates": [{"name": "sodium-ion battery", "document_ids": ["d1"]}]}])
+
+    await extract_candidates(docs, client=client)
+
+    assert len(client.prompts) == 1

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,6 +27,18 @@ DOCKER_MARKER = Path("/.dockerenv")
 PING_TIMEOUT_S = 3.0
 KEEP_ALIVE = "10m"
 TEMPERATURE = 0.2
+
+
+async def _rest_gpu(call_s: float, sleep=asyncio.sleep) -> None:
+    """Пауза после вызова модели: доля его длительности (LLM_GPU_REST_SHARE в .env, 0 — без пауз).
+
+    На ноутбуке с одной видеокартой долгий прогон держит её на 100%, и после такого прогона у
+    пользователя пошли артефакты изображения. Доля 0.25 даёт в среднем около 80% загрузки — прогон
+    дольше, зато карта отдыхает.
+    """
+    share = get_settings().llm_gpu_rest_share
+    if share > 0:
+        await sleep(share * call_s)
 
 
 @dataclass(frozen=True)
@@ -61,10 +75,12 @@ class OllamaBackend:
         }
         if json_schema is not None:
             body["format"] = json_schema
+        started = time.perf_counter()
         try:
             data = await self._post_chat(body, timeout_s)
         except httpx.HTTPError as exc:
             raise LLMError(f"Ollama не ответила ({exc})") from exc
+        await _rest_gpu(time.perf_counter() - started)
         return (data.get("message") or {}).get("content", "")
 
     async def is_available(self) -> bool:
