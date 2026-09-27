@@ -22,6 +22,10 @@ log = get_logger(__name__)
 
 # Сколько документов показываем в карточке (и отдаём модели в промпт).
 MAX_SOURCES = 5
+# Потолок длины ответа модели на карточку. Было 700: русский текст карточки длиннее, и на прогоне
+# 27.09 (Qwen3 14B, 90 карточек) у 11 ответ обрывался посреди JSON («EOF while parsing») — оба
+# повтора падали одинаково, и карточка уходила в выдачу без описания.
+CARD_MAX_TOKENS = 1200
 # Сколько знаков аннотации кладём в промпт: дальше идёт вода, а токены на процессоре дорогие.
 ABSTRACT_CHARS = 600
 
@@ -93,7 +97,7 @@ async def _ask_llm(
             step="make_card",
             prompt=render("make_card", name=scored.name, documents=_documents_block(docs)),
             schema=_CardText,
-            max_tokens=700,
+            max_tokens=CARD_MAX_TOKENS,
         )
     except LLMError as exc:
         log.warning("make_card(%s): LLM не помогла (%s) — карточка без описания", scored.candidate_id, exc)
