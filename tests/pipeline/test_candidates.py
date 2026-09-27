@@ -315,6 +315,40 @@ async def test_cap_takes_candidates_from_every_batch(monkeypatch: pytest.MonkeyP
     assert names[:2] == ["early sensor a", "late sensor"]
 
 
+async def test_cap_keeps_names_the_name_model_prefers(monkeypatch: pytest.MonkeyPatch):
+    """Кандидатов больше предела — под ним остаются те, чьё название похоже на раннюю технологию."""
+    from src.model import names as name_model
+
+    monkeypatch.setattr(candidates_module, "MAX_CANDIDATES", 2)
+    calls: list[str] = []
+
+    def scores(ns: list[str], step: str = "name_model") -> list[float]:
+        calls.append(step)
+        return [0.9 if n == "late sensor" else 0.1 for n in ns]
+
+    monkeypatch.setattr(name_model, "name_scores", scores)
+    docs = [_doc(str(i), f"Работа {i}") for i in range(16)]
+    first = {"candidates": [{"name": f"early sensor {n}", "document_ids": ["d1"]} for n in "abc"]}
+    second = {"candidates": [{"name": "late sensor", "document_ids": ["d1"]}]}
+
+    names = [c.name for c in await extract_candidates(docs, client=_FakeClient([first, second]))]
+
+    assert names == ["late sensor", "early sensor a"]  # при равной оценке — прежний круговой порядок
+    assert calls == ["candidate_order"]
+
+
+async def test_under_the_cap_the_name_model_is_not_called(monkeypatch: pytest.MonkeyPatch):
+    from src.model import names as name_model
+
+    def fail(*_args, **_kwargs):
+        raise AssertionError("модель названий не нужна, если кандидатов не больше предела")
+
+    monkeypatch.setattr(name_model, "name_scores", fail)
+    docs = [_doc(str(i), f"Работа {i}") for i in range(8)]
+    answer = {"candidates": [{"name": "quantum sensing", "document_ids": ["d1"]}]}
+    assert [c.name for c in await extract_candidates(docs, client=_FakeClient([answer]))] == ["quantum sensing"]
+
+
 @pytest.mark.parametrize(
     "variants",
     [

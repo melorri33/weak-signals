@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 from difflib import SequenceMatcher
@@ -25,6 +26,7 @@ from src.common.logs import get_logger
 from src.common.schemas import Candidate, Document, SourceType
 from src.llm.client import LLMClient, LLMError, dumps_ru
 from src.llm.prompt_loader import render
+from src.model import names
 
 log = get_logger(__name__)
 
@@ -241,7 +243,8 @@ async def extract_candidates(docs: list[Document], client: LLMClient | None = No
         candidates = []
     if not candidates:
         candidates = _from_titles(docs)
-    candidates = candidates[:MAX_CANDIDATES]
+    # В потоке: модель названий считает эмбеддинги на процессоре, в цикле событий это вешало бы API.
+    candidates = (await asyncio.to_thread(_by_name_model, candidates))[:MAX_CANDIDATES]
     warn_on_long_names(candidates)
     log.info("Кандидатов из %d документов: %d", len(docs), len(candidates))
     return candidates
@@ -286,6 +289,24 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
 def _round_robin(per_batch: list[list[str]]) -> list[str]:
     """Первые кандидаты всех пачек, затем вторые и т.д. — чтобы предел MAX_CANDIDATES не срезал хвост очереди."""
     return [key for row in zip_longest(*per_batch) for key in row if key is not None]
+
+
+def _by_name_model(candidates: list[Candidate]) -> list[Candidate]:
+    """Перед пределом MAX_CANDIDATES — сначала те, чьё название похоже на узкую раннюю технологию.
+
+    Облачная модель выписывает 250–300 кандидатов на 150 мест, и круговой порядок решал, кто останется,
+    по номеру записи внутри пачки: при 63 пачках из каждой выживали первые две-три. Трассировка 27.09
+    на замороженном корпусе: правильно названная технология датасета стояла на 157-м месте и срезалась,
+    а под пределом оставались имена компаний и общие слова. Модель названий (src/model/names.py) их
+    и отличает. При равной оценке и без модели порядок прежний — по кругу.
+    """
+    if len(candidates) <= MAX_CANDIDATES:
+        return candidates
+    scores = names.name_scores([c.name for c in candidates], step="candidate_order")
+    if scores is None:
+        return candidates
+    order = sorted(range(len(candidates)), key=lambda i: -scores[i])
+    return [candidates[i] for i in order]
 
 
 # На сколько новостей приходится один научный документ в очереди к модели. Новостей больше,

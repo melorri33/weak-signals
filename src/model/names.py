@@ -57,23 +57,39 @@ def _encoder(model_name: str):  # -> SentenceTransformer
 
 
 def embed(texts: list[str], model_name: str) -> np.ndarray:
-    """Нормированные эмбеддинги названий (общие для обучения и инференса)."""
-    return np.asarray(
-        _encoder(model_name).encode(texts, normalize_embeddings=True, batch_size=64, show_progress_bar=False)
-    )
+    """Нормированные эмбеддинги названий (общие для обучения и инференса).
+
+    Уже посчитанные берутся из кэша: одни и те же названия сначала упорядочиваются перед пределом
+    кандидатов, а потом оцениваются, и на процессоре второй проход стоил бы лишние секунды.
+    """
+    todo = [t for t in dict.fromkeys(texts) if (model_name, t) not in _EMBEDDINGS]
+    if todo:
+        vecs = _encoder(model_name).encode(todo, normalize_embeddings=True, batch_size=64, show_progress_bar=False)
+        if len(_EMBEDDINGS) > EMBEDDING_CACHE_SIZE:
+            _EMBEDDINGS.clear()
+        _EMBEDDINGS.update({(model_name, t): v for t, v in zip(todo, vecs, strict=True)})
+    return np.asarray([_EMBEDDINGS[(model_name, t)] for t in texts])
+
+
+# Кэш эмбеддингов названий на процесс: API живёт долго, поэтому с верхней границей.
+EMBEDDING_CACHE_SIZE = 50_000
+_EMBEDDINGS: dict[tuple[str, str], np.ndarray] = {}
 
 
 def probabilities(X: np.ndarray, coef: list[float], intercept: float) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-(X @ np.asarray(coef) + intercept)))
 
 
-def name_scores(names: list[str]) -> list[float] | None:
-    """Вероятность «название похоже на раннюю технологию» для каждого имени или None."""
+def name_scores(names: list[str], step: str = "name_model") -> list[float] | None:
+    """Вероятность «название похоже на раннюю технологию» для каждого имени или None.
+
+    step — под каким шагом вызов попадёт в журнал моделей: при скоринге и при отборе кандидатов.
+    """
     art = artifact()
     if art is None or not names:
         return None
     try:
-        with model_timer(step="name_model", model=art["encoder"], provider=PROVIDER):
+        with model_timer(step=step, model=art["encoder"], provider=PROVIDER):
             X = embed(names, art["encoder"])
     except Exception as exc:  # нет пакета, нет весов bge-m3, нехватка памяти — работаем без модели названий
         log.warning("Модель названий не сработала (%s) — оценка только по CatBoost", exc)
