@@ -22,6 +22,7 @@ from itertools import zip_longest
 
 from pydantic import BaseModel, Field
 
+from src.common.config import get_settings, llm_budget
 from src.common.logs import get_logger
 from src.common.phrases import is_fresh_phrase
 from src.common.schemas import Candidate, Document, SourceType
@@ -72,10 +73,10 @@ MAX_DOCS_FOR_LLM = 500
 # о раунде технологию часто называют во втором-третьем предложении, после суммы и инвесторов:
 # трассировка 26.09 нашла технологии датасета, названные дальше 300-го знака, — модель их просто
 # не видела. На облачной модели лишние 300 знаков почти не добавляют времени.
-# 1000, а не 600: трассировка 27.09 (замороженный корпус, 94 упоминания технологий датасета в 500
-# документах) — 26 упоминаний лежали дальше 600-го знака. Технологий, чьё упоминание видит модель
-# на глубине 160 документов, 15 → 17, на всех 500 — 29 → 31.
-ABSTRACT_CHARS = 1000
+# 1000 знаков пробовали 27.09: на глубине 160 документов модель видит 17 технологий датасета вместо 15,
+# на всех 500 — 31 вместо 29. Но на локальной модели пачка идёт дольше, и прочитанных документов
+# становится меньше, чем прибавилось видимых упоминаний. Для облачной модели стоит вернуться к этому.
+ABSTRACT_CHARS = 600
 # Собственный бюджет шага. Держим его заметно ниже бюджета конвейера (CANDIDATES_BUDGET_S):
 # отмена снаружи приходит посреди вызова модели и уносит всех уже выписанных кандидатов,
 # поэтому останавливаемся сами и возвращаем то, что успели.
@@ -262,16 +263,17 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
     corpus = "\n".join(f"{doc.title}\n{doc.abstract or ''}" for doc in chosen)
     merged: dict[str, Candidate] = {}
     new_per_batch: list[list[str]] = []
+    budget_s = llm_budget(BUDGET_S)  # паузы для видеокарты удлиняют шаг, а не урезают чтение
     started = time.perf_counter()
     slowest_batch_s = 0.0
     for number, batch in enumerate(batches, start=1):
         elapsed = time.perf_counter() - started
         # Начинаем пачку, только если она успеет закончиться: прерванный вызов модели ничего не даёт,
         # а время съедает. Ориентируемся на самую долгую из уже сделанных.
-        if elapsed + slowest_batch_s > BUDGET_S:
+        if elapsed + slowest_batch_s > budget_s:
             log.warning(
                 "extract_candidates: бюджет %.0f с, прошло %.0f с — пачки с %d по %d не беру",
-                BUDGET_S,
+                budget_s,
                 elapsed,
                 number,
                 len(batches),
@@ -288,7 +290,8 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
         rejected: list[tuple[str, list[str]]] = []
         kept: set[str] = set()
         added = _merge(merged, answer.candidates, labels, corpus, rejected, kept)
-        added += await _rescue(client, labels, rejected, kept, merged, corpus)
+        if get_settings().extract_rescue:
+            added += await _rescue(client, labels, rejected, kept, merged, corpus)
         slowest_batch_s = max(slowest_batch_s, time.perf_counter() - batch_started)
         new_per_batch.append(added)
     if not merged:

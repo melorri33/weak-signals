@@ -175,3 +175,13 @@ async def test_ollama_rests_gpu_share_of_call(monkeypatch):
     await ollama._rest_gpu(8.0, sleep=fake_sleep)
 
     assert slept == [2.0]
+
+
+def test_llm_budget_grows_with_gpu_rest(monkeypatch):
+    """Пауза для видеокарты удлиняет шаг, а не урезает работу: 27.09 без этого не собрались карточки."""
+    from src.common.config import get_settings, llm_budget
+
+    monkeypatch.setattr(get_settings(), "llm_gpu_rest_share", 0.25)
+    assert llm_budget(200.0) == 250.0
+    monkeypatch.setattr(get_settings(), "llm_gpu_rest_share", 0.0)
+    assert llm_budget(200.0) == 200.0

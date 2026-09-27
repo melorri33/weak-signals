@@ -152,3 +152,10 @@ async def test_no_fresh_phrases_for_cyrillic_area_or_when_disabled(monkeypatch: 
     monkeypatch.setattr(get_settings(), "fresh_phrases", False)
     phrases = await expand_query("хранение энергии", client=_AreaClient("energy storage"))  # type: ignore[arg-type]
     assert not any(p.endswith("startup raises") for p in phrases)
+
+
+async def test_area_listing_takes_first_part():
+    """Модель перечисляет области через «and» — берём первую: «edge AI and edge computing» → «edge ai»."""
+    phrases = await expand_query("edge", client=_AreaClient("edge AI and edge computing"))  # type: ignore[arg-type]
+
+    assert "edge ai startup raises" in phrases

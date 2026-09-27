@@ -491,7 +491,25 @@ def test_startup_news_read_first():
     assert [d.id for d in order] == ["a", "c", "b"]
 
 
-async def test_rescue_names_technology_behind_company():
+@pytest.fixture
+def rescue_on(monkeypatch):
+    from src.common.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "extract_rescue", True)
+
+
+async def test_rescue_is_off_by_default():
+    """На локальной модели спасение стоит трети чтения — по умолчанию выключено (EXTRACT_RESCUE)."""
+    docs = [_doc("a", "Voltara raises $12M to scale sodium-ion batteries", SourceType.NEWS)]
+    client = _FakeClient([{"candidates": [{"name": "Voltara", "company": "Voltara", "document_ids": ["d1"]}]}])
+
+    candidates = await extract_candidates(docs, client=client)
+
+    assert len(client.prompts) == 1
+    assert all(c.name != "Voltara" for c in candidates)
+
+
+async def test_rescue_names_technology_behind_company(rescue_on):
     """Модель выписала компанию — второй вопрос по этому документу возвращает технологию за ней."""
     docs = [_doc("a", "Voltara raises $12M to scale sodium-ion batteries", SourceType.NEWS)]
     client = _FakeClient(
@@ -507,7 +525,7 @@ async def test_rescue_names_technology_behind_company():
     assert "Voltara" in client.prompts[1] and "about" in client.prompts[1]
 
 
-async def test_rescue_asks_about_startup_news_with_nothing_extracted():
+async def test_rescue_asks_about_startup_news_with_nothing_extracted(rescue_on):
     docs = [_doc("a", "Voltara raises $12M to scale sodium-ion batteries", SourceType.NEWS)]
     client = _FakeClient([{"candidates": []}, {"candidates": [{"name": "sodium-ion battery", "document_ids": ["d1"]}]}])
 
@@ -516,7 +534,7 @@ async def test_rescue_asks_about_startup_news_with_nothing_extracted():
     assert [c.name for c in candidates] == ["sodium-ion battery"]
 
 
-async def test_no_rescue_when_document_already_has_candidate():
+async def test_no_rescue_when_document_already_has_candidate(rescue_on):
     docs = [_doc("a", "Voltara raises $12M to scale sodium-ion batteries", SourceType.NEWS)]
     client = _FakeClient([{"candidates": [{"name": "sodium-ion battery", "document_ids": ["d1"]}]}])
 

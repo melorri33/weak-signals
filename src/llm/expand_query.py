@@ -147,8 +147,12 @@ async def expand_query(query: str, client: LLMClient | None = None) -> list[str]
 
 
 def _area(raw: str) -> str:
-    """Область для фраз свежести: одно–три английских слова, без кириллицы и лишних знаков. Иначе пусто."""
-    words = re.sub(r"[^A-Za-z0-9 \-]", " ", raw or "").split()
+    """Область для фраз свежести: одно–три английских слова, без кириллицы и лишних знаков. Иначе пусто.
+
+    «edge AI and edge computing» → «edge ai»: модель любит перечислять, берём первую часть.
+    """
+    first = re.split(r",|;|/|\band\b|\bи\b", raw or "", maxsplit=1)[0]
+    words = re.sub(r"[^A-Za-z0-9 \-]", " ", first).split()
     if not words or len(words) > 3 or _CYRILLIC_RE.search(raw or ""):
         return ""
     return " ".join(words).lower()

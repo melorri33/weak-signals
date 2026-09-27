@@ -17,7 +17,7 @@ from collections.abc import Awaitable, Callable
 from typing import TypeVar
 from uuid import uuid4
 
-from src.common.config import get_settings
+from src.common.config import get_settings, llm_budget
 from src.common.logs import collected_model_calls, collected_source_failures, get_logger, start_run_log
 from src.common.schemas import (
     CONFIDENT_THRESHOLD,
@@ -128,7 +128,7 @@ async def run(
             on_progress(result)
 
     progress("расширяем запрос")
-    phrases = await _with_budget("expand_query", EXPAND_BUDGET_S, expand_query(query), default=[])
+    phrases = await _with_budget("expand_query", llm_budget(EXPAND_BUDGET_S), expand_query(query), default=[])
     result.expanded_phrases = phrases or [query]
 
     progress("собираем источники")
@@ -146,7 +146,9 @@ async def run(
     result.documents_processed = len(docs)
 
     progress("выделяем кандидатов")
-    candidates = await _with_budget("extract_candidates", CANDIDATES_BUDGET_S, extract_candidates(docs), default=[])
+    candidates = await _with_budget(
+        "extract_candidates", llm_budget(CANDIDATES_BUDGET_S), extract_candidates(docs), default=[]
+    )
     if not candidates:
         return _failed(result, started, "Не удалось выделить ни одной технологии-кандидата")
     result.candidates_found = len(candidates)
@@ -190,7 +192,7 @@ async def run(
 
 async def _drop_off_topic(query: str, scored: list[ScoredCandidate], result: SearchResult) -> list[ScoredCandidate]:
     """Убрать из верха списка технологии чужой области; они уходят в отсеянные с причиной."""
-    decisions = await _with_budget("check_topic", TOPIC_BUDGET_S, off_topic(query, scored), default=[])
+    decisions = await _with_budget("check_topic", llm_budget(TOPIC_BUDGET_S), off_topic(query, scored), default=[])
     result.excluded.extend(decisions)
     dropped = {decision.candidate_id for decision in decisions}
     return [item for item in scored if item.candidate_id not in dropped]
@@ -461,7 +463,8 @@ async def _cards(
         return None
 
     started = time.perf_counter()
-    deadline = started + CARDS_BUDGET_S
+    budget_s = llm_budget(CARDS_BUDGET_S)
+    deadline = started + budget_s
     while queue and len(cards) < TOP_N:
         batch_size = min(CARDS_CONCURRENCY, TOP_N - len(cards), len(queue))
         batch = [queue.popleft() for _ in range(batch_size)]
@@ -473,9 +476,9 @@ async def _cards(
         # Идём по batch, а не по множеству done: порядок карточек — это порядок уверенности модели.
         cards.extend(t.result() for t in tasks if t not in pending and t.result() is not None)
         if pending:
-            log.error("Шаг make_card не успел за %.0f с — отдаю %d карточек", CARDS_BUDGET_S, len(cards))
+            log.error("Шаг make_card не успел за %.0f с — отдаю %d карточек", budget_s, len(cards))
             break
-    log.info("Шаг make_card: %.1f с из %.0f с бюджета", time.perf_counter() - started, CARDS_BUDGET_S)
+    log.info("Шаг make_card: %.1f с из %.0f с бюджета", time.perf_counter() - started, budget_s)
     if len(cards) < TOP_N:
         log.warning(
             "В выдаче %d карточек вместо %d: кандидаты кончились или не собрались (осталось в очереди: %d)",
