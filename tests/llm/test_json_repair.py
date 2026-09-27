@@ -1,4 +1,4 @@
-"""Починка JSON в ответе модели: лишние запятые и переписанная схема — офлайн."""
+"""Починка JSON в ответе модели: лишние запятые, переписанная схема, скобки и кавычки — офлайн."""
 
 import json
 
@@ -43,6 +43,42 @@ def test_schema_echoed_before_answer_is_dropped(between: str):
 def test_truncated_answer_is_not_invented():
     raw = SCHEMA + '{"name_ru": "Город", "facts": ["перв'
     assert repair_json(raw) == raw  # недописанное не достраиваем — пусть модель переделает
+
+
+class _Note(BaseModel):
+    name_ru: str
+    items: list[dict[str, str]] = []
+
+
+# Огрехи разметки из ответов GigaChat 2 Pro 27.09: текст на месте, ломаются скобки и кавычки вокруг.
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ('{"name_ru": "Город", "items": [{"b": "текст."}]]}', {"name_ru": "Город", "items": [{"b": "текст."}]}),
+        ('{"name_ru": "Город", "items": [{"b": "текст."}])}', {"name_ru": "Город", "items": [{"b": "текст."}]}),
+        ('{"name_ru": "Город", "items": [{"b": "текст.")}]}', {"name_ru": "Город", "items": [{"b": "текст."}]}),
+        ('{"name_ru": "Город", "items": [{"b": "текст."}])', {"name_ru": "Город", "items": [{"b": "текст."}]}),
+        ('{"name_ru": "Сорт "Альфа" для полей"}', {"name_ru": 'Сорт "Альфа" для полей'}),
+        ('{"name_ru": "Город."", "items": []}', {"name_ru": "Город.", "items": []}),
+        (
+            '{"name_ru": "Город", "items": [{"b": "раз", {"b": "два"}]}',
+            {"name_ru": "Город", "items": [{"b": "раз"}, {"b": "два"}]},
+        ),  # noqa: E501
+        ('{"name_ru": "Город, где\nпоют"}}', {"name_ru": "Город, где\nпоют"}),
+    ],
+)
+def test_broken_markup_around_complete_text_is_repaired(raw: str, expected: dict):
+    assert json.loads(repair_json(raw)) == expected
+
+
+def test_unclosed_string_loses_bracket_junk_not_text():
+    raw = '{"name_ru": "Город", "items": [{"b": "текст.}])}'
+    assert _Note.model_validate_json(repair_json(raw)).items == [{"b": "текст."}]
+
+
+def test_answer_cut_mid_text_is_not_completed():
+    raw = '{"name_ru": "Город", "items": [{"b": "обрезанный текс'
+    assert repair_json(raw) == raw
 
 
 class _Backend:
