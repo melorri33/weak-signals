@@ -30,6 +30,11 @@ MAX_SHARE = 1 / 3
 class _OffTopic(BaseModel):
     id: str
     area: str = ""
+    # Самопроверка модели: можно ли применить технологию в области запроса. Прогоны 27.09 (Qwen3 14B
+    # и GigaChat 2 Pro): без неё фильтр записывал в чужие технологии ИИ, навигации и управления по
+    # запросам о финтехе и робототехнике с областью «искусственный интеллект», хотя промпт просил
+    # так не делать, — и выбросил две технологии датасета. Нет ответа — считаем применимой.
+    applies_to_query: bool = True
 
 
 class _Answer(BaseModel):
@@ -54,6 +59,8 @@ async def off_topic(query: str, scored: list[ScoredCandidate], client: LLMClient
     by_name = {item.name.lower(): label for label, item in labels.items()}
     flagged = {}
     for found in answer.off_topic:
+        if found.applies_to_query:
+            continue  # модель сама признала, что технология применима в области запроса
         label = found.id.strip()
         label = label if label in labels else by_name.get(label.lower())
         if label is not None:
