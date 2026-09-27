@@ -25,6 +25,7 @@ from src.common.schemas import (
     Candidate,
     CandidateFeatures,
     Document,
+    FilterDecision,
     ScoredCandidate,
     SearchResult,
     SignalCard,
@@ -36,6 +37,7 @@ from src.llm.expand_query import expand_query
 from src.model import score
 from src.pipeline import deps
 from src.pipeline.candidates import extract_candidates
+from src.pipeline.technology import not_technology
 from src.pipeline.topic import off_topic
 
 log = get_logger(__name__)
@@ -191,8 +193,20 @@ async def run(
 
 
 async def _drop_off_topic(query: str, scored: list[ScoredCandidate], result: SearchResult) -> list[ScoredCandidate]:
-    """Убрать из верха списка технологии чужой области; они уходят в отсеянные с причиной."""
+    """Убрать из верха списка чужую область, а затем то, что не технология; всё — в отсеянные с причиной."""
     decisions = await _with_budget("check_topic", llm_budget(TOPIC_BUDGET_S), off_topic(query, scored), default=[])
+    scored = _without(scored, decisions, result)
+    if get_settings().check_technology:
+        decisions = await _with_budget(
+            "check_technology", llm_budget(TOPIC_BUDGET_S), not_technology(query, scored), default=[]
+        )
+        scored = _without(scored, decisions, result)
+    return scored
+
+
+def _without(
+    scored: list[ScoredCandidate], decisions: list[FilterDecision], result: SearchResult
+) -> list[ScoredCandidate]:
     result.excluded.extend(decisions)
     dropped = {decision.candidate_id for decision in decisions}
     return [item for item in scored if item.candidate_id not in dropped]

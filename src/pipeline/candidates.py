@@ -68,7 +68,7 @@ DOCS_IN_BATCH = 8
 # Сколько документов вообще отдаём модели. На видеокарте вызов стоит секунды, поэтому отдаём всё,
 # что собрали (MAX_DOCUMENTS в .env): чем больше документов посмотрела модель, тем больше шансов,
 # что нужная технология вообще попадёт в кандидаты. Реальную границу ставит BUDGET_S ниже.
-MAX_DOCS_FOR_LLM = 500
+MAX_DOCS_FOR_LLM = 500  # по умолчанию; для облачной модели — MAX_DOCS_FOR_LLM в .env
 # Сколько знаков аннотации кладём в промпт. Было 300: токены на ноутбуке дорогие. Но в новости
 # о раунде технологию часто называют во втором-третьем предложении, после суммы и инвесторов:
 # трассировка 26.09 нашла технологии датасета, названные дальше 300-го знака, — модель их просто
@@ -257,7 +257,7 @@ async def extract_candidates(docs: list[Document], client: LLMClient | None = No
 
 async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
     """Опросить модель по пачкам документов и склеить ответы."""
-    chosen = _order_for_llm(docs)[:MAX_DOCS_FOR_LLM]
+    chosen = _order_for_llm(docs)[: get_settings().max_docs_for_llm]
     batches = [chosen[i : i + DOCS_IN_BATCH] for i in range(0, len(chosen), DOCS_IN_BATCH)]
     # Все тексты, что видит модель, — чтобы проверить, пишут ли название где-нибудь строчными.
     corpus = "\n".join(f"{doc.title}\n{doc.abstract or ''}" for doc in chosen)
