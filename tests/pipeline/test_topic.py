@@ -29,7 +29,7 @@ async def test_alien_area_goes_to_excluded_with_reason():
     scored = _scored(
         "soil moisture sensing", "drug screening organoids", "weed spraying drone", "crop yield forecasting"
     )
-    client = _FakeClient({"off_topic": [{"id": "t2", "area": "медицина"}]})
+    client = _FakeClient({"off_topic": [{"id": "t2", "area": "медицина", "applies_to_query": False}]})
 
     decisions = await off_topic(QUERY, scored, client=client)
 
@@ -42,7 +42,14 @@ async def test_name_instead_of_id_is_accepted_and_unknown_ids_are_ignored():
     scored = _scored(
         "soil moisture sensing", "drug screening organoids", "weed spraying drone", "crop yield forecasting"
     )
-    client = _FakeClient({"off_topic": [{"id": "Drug Screening Organoids"}, {"id": "t99"}]})
+    client = _FakeClient(
+        {
+            "off_topic": [
+                {"id": "Drug Screening Organoids", "applies_to_query": False},
+                {"id": "t99", "applies_to_query": False},
+            ]
+        }
+    )
 
     decisions = await off_topic(QUERY, scored, client=client)
 
@@ -51,7 +58,9 @@ async def test_name_instead_of_id_is_accepted_and_unknown_ids_are_ignored():
 
 async def test_model_that_rejects_too_much_is_not_trusted():
     scored = _scored("soil moisture sensing", "drug screening organoids", "weed spraying drone")
-    client = _FakeClient({"off_topic": [{"id": "t1"}, {"id": "t2"}]})
+    client = _FakeClient(
+        {"off_topic": [{"id": "t1", "applies_to_query": False}, {"id": "t2", "applies_to_query": False}]}
+    )
 
     assert await off_topic(QUERY, scored, client=client) == []
 
@@ -68,3 +77,45 @@ async def test_only_the_top_of_the_list_is_checked():
 
     assert f"technology {CHECKED - 1}" in client.prompts[0]
     assert f"technology {CHECKED}\n" not in client.prompts[0] + "\n"
+
+
+async def test_technology_the_model_admits_applies_is_kept():
+    """27.09 фильтр записывал технологии ИИ в чужие по запросам о финтехе и роботах; самопроверка их возвращает."""
+    scored = _scored("soil moisture sensing", "drug screening organoids", "plant disease detection model")
+    client = _FakeClient(
+        {
+            "off_topic": [
+                {"id": "t2", "area": "медицина", "applies_to_query": False},
+                {"id": "t3", "area": "искусственный интеллект", "applies_to_query": True},
+            ]
+        }
+    )
+
+    decisions = await off_topic(QUERY, scored, client=client)
+
+    assert [d.candidate_id for d in decisions] == ["c1"]
+    assert "applies_to_query" in client.prompts[0]
+
+
+async def test_no_self_check_in_answer_keeps_the_technology():
+    scored = _scored("soil moisture sensing", "drug screening organoids")
+    client = _FakeClient({"off_topic": [{"id": "t2", "area": "медицина"}]})
+
+    assert await off_topic(QUERY, scored, client=client) == []
+
+
+async def test_share_limit_counts_only_confirmed_aliens():
+    scored = _scored("soil moisture sensing", "drug screening organoids", "weed spraying drone")
+    client = _FakeClient(
+        {
+            "off_topic": [
+                {"id": "t1", "applies_to_query": True},
+                {"id": "t2", "applies_to_query": False},
+                {"id": "t3", "applies_to_query": True},
+            ]
+        }
+    )
+
+    decisions = await off_topic(QUERY, scored, client=client)
+
+    assert [d.candidate_id for d in decisions] == ["c1"]
