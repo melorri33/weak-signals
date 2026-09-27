@@ -185,3 +185,14 @@ def test_llm_budget_grows_with_gpu_rest(monkeypatch):
     assert llm_budget(200.0) == 250.0
     monkeypatch.setattr(get_settings(), "llm_gpu_rest_share", 0.0)
     assert llm_budget(200.0) == 200.0
+
+
+def test_llm_budget_scale_multiplies_on_top_of_gpu_rest(monkeypatch):
+    """Облачной модели даём время дочитать все документы: множитель поверх паузы для видеокарты."""
+    from src.common.config import get_settings, llm_budget
+
+    monkeypatch.setattr(get_settings(), "llm_gpu_rest_share", 0.25)
+    monkeypatch.setattr(get_settings(), "llm_budget_scale", 2.0)
+    assert llm_budget(200.0) == 500.0
+    monkeypatch.setattr(get_settings(), "llm_budget_scale", 1.0)
+    assert llm_budget(200.0) == 250.0
