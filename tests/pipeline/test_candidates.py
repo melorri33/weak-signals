@@ -377,6 +377,31 @@ def test_technologies_are_kept(name: str, title: str, abstract: str):
     assert not candidates_module._is_proper_name(name, [_news(title, abstract)])
 
 
+def test_term_capitalized_in_its_document_but_lowercase_elsewhere_is_kept():
+    doc = _news("Growers try new tools", "Soil Moisture Sensing, also known as probe irrigation, spreads.")
+    corpus = "Farms adopt soil moisture sensing to save water."
+    assert candidates_module._is_proper_name("soil moisture sensing", [doc])
+    assert not candidates_module._is_proper_name("soil moisture sensing", [doc], corpus)
+
+
+@pytest.mark.parametrize(
+    ("name", "title", "abstract", "corpus"),
+    [
+        # Сайт компании строчными — не довод, что это термин.
+        ("baya systems", "Baya Systems raises $36M", "Baya Systems builds fabrics.", "See bayasystems.com today."),
+        # Одно слово строчными пишут всегда, с заглавной — продукт.
+        ("loop", "Acme launches Loop for fleets", "Loop tracks trucks.", "A feedback loop helps."),
+    ],
+)
+def test_lowercase_elsewhere_does_not_save_a_name(name: str, title: str, abstract: str, corpus: str):
+    assert candidates_module._is_proper_name(name, [_news(title, abstract)], corpus)
+
+
+def test_rss_tail_headline_is_not_a_proper_name():
+    abstract = "Models help growers plan. The post Crop Yield Forecasting Goes Mainstream appeared first on Agri News."
+    assert not candidates_module._is_proper_name("crop yield forecasting", [_news("Growers plan", abstract)])
+
+
 async def test_company_name_does_not_take_a_candidate_slot():
     docs = [_news("HarvestIQ closes round for its yield models", "HarvestIQ builds crop yield forecasting.")]
     answer = {
