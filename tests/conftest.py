@@ -11,4 +11,4 @@ def _no_name_model(monkeypatch):
     """
     from src.model import names
 
-    monkeypatch.setattr(names, "name_scores", lambda _names: None)
+    monkeypatch.setattr(names, "name_scores", lambda _names, **_kwargs: None)
