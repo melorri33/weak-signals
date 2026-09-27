@@ -157,3 +157,42 @@ async def test_journal_records_cloud_model_and_provider(cloud_settings, monkeypa
 
     calls = collected_model_calls()
     assert [(c.step, c.model, c.provider) for c in calls] == [("expand_query", MODEL, "yandexgpt")]
+
+
+async def test_ollama_rests_gpu_share_of_call(monkeypatch):
+    """LLM_GPU_REST_SHARE=0.25 — после вызова пауза в четверть его длительности (~80% загрузки карты)."""
+    from src.common.config import get_settings
+    from src.llm.providers import ollama
+
+    slept: list[float] = []
+
+    async def fake_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    monkeypatch.setattr(get_settings(), "llm_gpu_rest_share", 0.25)
+    await ollama._rest_gpu(8.0, sleep=fake_sleep)
+    monkeypatch.setattr(get_settings(), "llm_gpu_rest_share", 0.0)
+    await ollama._rest_gpu(8.0, sleep=fake_sleep)
+
+    assert slept == [2.0]
+
+
+def test_llm_budget_grows_with_gpu_rest(monkeypatch):
+    """Пауза для видеокарты удлиняет шаг, а не урезает работу: 27.09 без этого не собрались карточки."""
+    from src.common.config import get_settings, llm_budget
+
+    monkeypatch.setattr(get_settings(), "llm_gpu_rest_share", 0.25)
+    assert llm_budget(200.0) == 250.0
+    monkeypatch.setattr(get_settings(), "llm_gpu_rest_share", 0.0)
+    assert llm_budget(200.0) == 200.0
+
+
+def test_llm_budget_scale_multiplies_on_top_of_gpu_rest(monkeypatch):
+    """Облачной модели даём время дочитать все документы: множитель поверх паузы для видеокарты."""
+    from src.common.config import get_settings, llm_budget
+
+    monkeypatch.setattr(get_settings(), "llm_gpu_rest_share", 0.25)
+    monkeypatch.setattr(get_settings(), "llm_budget_scale", 2.0)
+    assert llm_budget(200.0) == 500.0
+    monkeypatch.setattr(get_settings(), "llm_budget_scale", 1.0)
+    assert llm_budget(200.0) == 250.0

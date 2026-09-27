@@ -22,7 +22,9 @@ from itertools import zip_longest
 
 from pydantic import BaseModel, Field
 
+from src.common.config import get_settings, llm_budget
 from src.common.logs import get_logger
+from src.common.phrases import is_fresh_phrase
 from src.common.schemas import Candidate, Document, SourceType
 from src.llm.client import LLMClient, LLMError, dumps_ru
 from src.llm.prompt_loader import render
@@ -71,6 +73,9 @@ MAX_DOCS_FOR_LLM = 500
 # о раунде технологию часто называют во втором-третьем предложении, после суммы и инвесторов:
 # трассировка 26.09 нашла технологии датасета, названные дальше 300-го знака, — модель их просто
 # не видела. На облачной модели лишние 300 знаков почти не добавляют времени.
+# 1000 знаков пробовали 27.09: на глубине 160 документов модель видит 17 технологий датасета вместо 15,
+# на всех 500 — 31 вместо 29. Но на локальной модели пачка идёт дольше, и прочитанных документов
+# становится меньше, чем прибавилось видимых упоминаний. Для облачной модели стоит вернуться к этому.
 ABSTRACT_CHARS = 600
 # Собственный бюджет шага. Держим его заметно ниже бюджета конвейера (CANDIDATES_BUDGET_S):
 # отмена снаружи приходит посреди вызова модели и уносит всех уже выписанных кандидатов,
@@ -258,16 +263,17 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
     corpus = "\n".join(f"{doc.title}\n{doc.abstract or ''}" for doc in chosen)
     merged: dict[str, Candidate] = {}
     new_per_batch: list[list[str]] = []
+    budget_s = llm_budget(BUDGET_S)  # паузы для видеокарты удлиняют шаг, а не урезают чтение
     started = time.perf_counter()
     slowest_batch_s = 0.0
     for number, batch in enumerate(batches, start=1):
         elapsed = time.perf_counter() - started
         # Начинаем пачку, только если она успеет закончиться: прерванный вызов модели ничего не даёт,
         # а время съедает. Ориентируемся на самую долгую из уже сделанных.
-        if elapsed + slowest_batch_s > BUDGET_S:
+        if elapsed + slowest_batch_s > budget_s:
             log.warning(
                 "extract_candidates: бюджет %.0f с, прошло %.0f с — пачки с %d по %d не беру",
-                BUDGET_S,
+                budget_s,
                 elapsed,
                 number,
                 len(batches),
@@ -281,11 +287,65 @@ async def _ask_llm(docs: list[Document], client: LLMClient) -> list[Candidate]:
         except LLMError as exc:
             log.warning("extract_candidates: пачка %d из %d не удалась (%s) — иду дальше", number, len(batches), exc)
             continue
+        rejected: list[tuple[str, list[str]]] = []
+        kept: set[str] = set()
+        added = _merge(merged, answer.candidates, labels, corpus, rejected, kept)
+        if get_settings().extract_rescue:
+            added += await _rescue(client, labels, rejected, kept, merged, corpus)
         slowest_batch_s = max(slowest_batch_s, time.perf_counter() - batch_started)
-        new_per_batch.append(_merge(merged, answer.candidates, labels, corpus))
+        new_per_batch.append(added)
     if not merged:
         raise LLMError("ни одна пачка документов не дала кандидатов")
     return [merged[key] for key in _round_robin(new_per_batch)]
+
+
+async def _rescue(
+    client: LLMClient,
+    labels: dict[str, Document],
+    rejected: list[tuple[str, list[str]]],
+    kept: set[str],
+    merged: dict[str, Candidate],
+    corpus: str,
+) -> list[str]:
+    """Спасти технологию из новости о стартапе: второй короткий вопрос — какая технология стоит за компанией.
+
+    Трассировка 27.09 (замороженный корпус, Qwen 14B): из 68 упоминаний технологий датасета, которые
+    модель видела, 40 закончились тем, что по документу выписано другое — чаще всего имя компании или
+    продукта, которое фильтр правильно выбрасывает, — и 14 ничем. Это почти всегда новости о стартапе:
+    раунд, запуск, партнёрство. Спрашиваем только про документы, по которым не осталось ни одного
+    кандидата: где выписали лишь имя, и новости о стартапах, по которым не выписали ничего.
+    Модель не ответила — идём дальше без спасения.
+    """
+    about: dict[str, str | None] = {}
+    for name, own in rejected:
+        for label in own:
+            if label not in kept:
+                about.setdefault(label, name)
+    for label, doc in labels.items():
+        if label not in kept and doc.source_type == SourceType.NEWS and _STARTUP_NEWS.search(doc.title):
+            about.setdefault(label, None)
+    if not about:
+        return []
+    subset = {label: labels[label] for label in labels if label in about}
+    block = "\n".join(
+        dumps_ru(
+            {
+                "id": label,
+                "title": doc.title,
+                "abstract": (doc.abstract or "")[:ABSTRACT_CHARS],
+                **({"about": about[label]} if about[label] else {}),
+            }
+        )
+        for label, doc in subset.items()
+    )
+    try:
+        answer = await client.ask_json(
+            step="extract_rescue", prompt=render("extract_rescue", documents=block), schema=_Answer, max_tokens=300
+        )
+    except LLMError as exc:
+        log.info("extract_candidates: спасение новостей о стартапах не удалось (%s)", exc)
+        return []
+    return _merge(merged, answer.candidates, subset, corpus)
 
 
 def _round_robin(per_batch: list[list[str]]) -> list[str]:
@@ -310,6 +370,13 @@ def _by_name_model(candidates: list[Candidate]) -> list[Candidate]:
     order = sorted(range(len(candidates)), key=lambda i: -scores[i])
     return [candidates[i] for i in order]
 
+
+# Заголовок новости о стартапе или запуске: раунд, выход из закрытого режима, запуск продукта.
+_STARTUP_NEWS = re.compile(
+    r"\b(raises?|raised|funding|seed|series [a-d]|pre-seed|emerges? from stealth|stealth|startup|start-up|"
+    r"launch(?:es|ed)?|unveils?|debuts?|introduces?|spin-?out|backed|investors?)\b",
+    re.IGNORECASE,
+)
 
 # На сколько новостей приходится один научный документ в очереди к модели. Новостей больше,
 # потому что у организаторов 71% источников датасета — техноновости. Но не все: наука находит
@@ -338,13 +405,23 @@ def _order_for_llm(docs: list[Document]) -> list[Document]:
     склейку одинаковых заголовков, подъём новостей про раунды стартапов. Ни один из этих
     способов не дал прироста сверх простого чередования.
 
+    Среди новостей первыми идут новости о стартапах и запусках (_STARTUP_NEWS в заголовке или найдены
+    фразой свежести). Замер 21.09 выше считал только сам термин датасета (12 технологий), и подъём
+    раундов тогда не помог. Но технологии датасета в документах почти всегда видны через компанию:
+    трассировка 27.09 — из 68 упоминаний, которые модель могла увидеть, 58 это новости о стартапе.
+    Считая и термин, и компанию, на глубине 160 документов (столько читает локальная модель)
+    модель видит 19 технологий датасета вместо 15; на всех 500 порядок не важен (29 и 29).
+
     Внутри каждой группы свежие идут первыми, документы без даты — последними.
     """
 
     def key(doc: Document) -> int:
         return -doc.published.toordinal() if doc.published else 0
 
-    news = sorted((d for d in docs if d.source_type == SourceType.NEWS), key=key)
+    def startup(doc: Document) -> bool:
+        return is_fresh_phrase(doc.found_by) or _STARTUP_NEWS.search(doc.title) is not None
+
+    news = sorted((d for d in docs if d.source_type == SourceType.NEWS), key=lambda d: (not startup(d), key(d)))
     papers = sorted((d for d in docs if d.source_type != SourceType.NEWS), key=key)
     mixed: list[Document] = []
     n = p = 0
@@ -372,29 +449,48 @@ def _documents_block(labels: dict[str, Document]) -> str:
 
 
 def _merge(
-    merged: dict[str, Candidate], found: list[_Candidate], labels: dict[str, Document], corpus: str = ""
+    merged: dict[str, Candidate],
+    found: list[_Candidate],
+    labels: dict[str, Document],
+    corpus: str = "",
+    rejected: list[tuple[str, list[str]]] | None = None,
+    kept: set[str] | None = None,
 ) -> list[str]:
-    """Добавить кандидатов пачки к общему списку, склеивая одинаковые по slug. Возвращает ключи новых."""
+    """Добавить кандидатов пачки к общему списку, склеивая одинаковые по slug. Возвращает ключи новых.
+
+    rejected — сюда складываются имена компаний и продуктов с метками их документов: по ним
+    _rescue спросит модель, какая технология стоит за компанией. kept — метки документов, по которым
+    кандидат остался: их спасать не нужно.
+    """
     added: list[str] = []
     for item in found:
         # GigaChat пишет и через подчёркивание: «agentic_ai», «gemma_3» — это те же пробелы.
         name = _unslug(" ".join(item.name.replace("_", " ").split()))
+        own_labels = [label for label in dict.fromkeys(item.document_ids) if label in labels]
         if not _is_usable(name):
+            if rejected is not None and own_labels and _looks_like_product(name):
+                rejected.append((name, own_labels))
             continue
         if item.company and len(_letters(item.company)) >= MIN_PROPER_NAME and _letters(item.company) in _letters(name):
             log.info("extract_candidates: «%s» — это компания или продукт «%s», пропускаю", name, item.company)
+            if rejected is not None and own_labels:
+                rejected.append((name, own_labels))
             continue
-        doc_ids = [labels[label].id for label in dict.fromkeys(item.document_ids) if label in labels]
-        if doc_ids and _is_proper_name(name, [labels[label] for label in item.document_ids if label in labels], corpus):
+        doc_ids = [labels[label].id for label in own_labels]
+        if doc_ids and _is_proper_name(name, [labels[label] for label in own_labels], corpus):
             log.info(
                 "extract_candidates: «%s» в документах пишется только с заглавной — это имя, а не технология", name
             )
+            if rejected is not None:
+                rejected.append((name, own_labels))
             continue
         if not doc_ids:
             # Модель не указала ни одного документа из пачки — брать такое нельзя:
             # карточка собирается только по документам кандидата.
             log.info("extract_candidates: «%s» без документов из пачки — пропускаю", name)
             continue
+        if kept is not None:
+            kept.update(own_labels)
         key = _slug(name)
         candidate = merged.get(key)
         if candidate is None:

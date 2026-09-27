@@ -123,3 +123,39 @@ def test_clean_keeps_real_phrase_in_angle_brackets():
         "quantum key distribution",
         "homomorphic encryption",
     ]
+
+
+class _AreaClient:
+    """Клиент, который вернул фразы и область запроса."""
+
+    def __init__(self, area: str) -> None:
+        self.area = area
+
+    async def ask_json(self, step: str, prompt: str, schema: type, system: str | None = None) -> object:
+        return schema(area=self.area, phrases=["sodium-ion battery", "solid-state electrolyte", "iron-air battery"])
+
+
+async def test_fresh_phrases_added_for_area():
+    phrases = await expand_query("перспективные технологии хранения энергии", client=_AreaClient("Energy Storage"))  # type: ignore[arg-type]
+
+    assert phrases[0] == "sodium-ion battery"
+    assert "energy storage startup raises" in phrases
+    assert "energy storage seed round" in phrases
+
+
+async def test_no_fresh_phrases_for_cyrillic_area_or_when_disabled(monkeypatch: pytest.MonkeyPatch):
+    from src.common.config import get_settings
+
+    phrases = await expand_query("хранение энергии", client=_AreaClient("хранение энергии"))  # type: ignore[arg-type]
+    assert not any(p.endswith("startup raises") for p in phrases)
+
+    monkeypatch.setattr(get_settings(), "fresh_phrases", False)
+    phrases = await expand_query("хранение энергии", client=_AreaClient("energy storage"))  # type: ignore[arg-type]
+    assert not any(p.endswith("startup raises") for p in phrases)
+
+
+async def test_area_listing_takes_first_part():
+    """Модель перечисляет области через «and» — берём первую: «edge AI and edge computing» → «edge ai»."""
+    phrases = await expand_query("edge", client=_AreaClient("edge AI and edge computing"))  # type: ignore[arg-type]
+
+    assert "edge ai startup raises" in phrases
