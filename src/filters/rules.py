@@ -41,15 +41,16 @@ def _noise(f: CandidateFeatures, cfg: dict[str, Any]) -> str | None:
 # «… adaptability». По точной фразе у такого названия одна-две работы, и правило «нет следа»
 # отсеивало саму технологию: 27–28.09 так ушли три технологии датасета за четыре прогона.
 # Конвейер в таком случае пробует название без хвоста (src/pipeline/run.py::_features).
+# Слов, которые бывают частью самого названия (models, layer, unit, engine, system, architecture),
+# в списке нет: прогон 28.09 резал «… foundation models» до «… foundation».
 GENERIC_TAILS = frozenset(
     {
-        "adaptability", "application", "applications", "approach", "architecture", "architectures",
-        "capabilities", "capability", "deployment", "design", "device", "devices", "engine",
-        "enhancement", "framework", "frameworks", "implementation", "integration", "layer", "mechanism",
-        "method", "methods", "model", "models", "module", "modules", "optimization", "paradigm",
-        "paradigms", "pipeline", "platform", "platforms", "protocol", "protocols", "scheme", "solution",
-        "solutions", "stack", "strategy", "structure", "suite", "system", "systems", "technologies",
-        "technology", "tile", "tiles", "toolkit", "unit", "units",
+        "adaptability", "application", "applications", "approach", "capabilities", "capability",
+        "deployment", "design", "device", "devices", "enhancement", "framework", "frameworks",
+        "implementation", "integration", "mechanism", "method", "methods", "module", "modules",
+        "optimization", "paradigm", "paradigms", "pipeline", "platform", "platforms", "protocol",
+        "protocols", "scheme", "solution", "solutions", "stack", "strategy", "structure", "suite",
+        "technologies", "technology", "tile", "tiles", "toolkit",
     }
 )  # fmt: skip
 
