@@ -487,3 +487,42 @@ async def test_overspecified_name_without_research_loses_its_generic_tail(monkey
 
     assert (shortened.name, sum(new.pubs_by_year.values())) == ("soil moisture sensing", 40)
     assert (kept.name, sum(same.pubs_by_year.values())) == ("vertical farm robot stack", 1)
+
+
+async def test_run_stops_before_work_when_openalex_credits_run_out(monkeypatch: pytest.MonkeyPatch):
+    """Кредитов OpenAlex меньше, чем на один запрос, — прогон не начинается, а честно говорит почему."""
+    from src.pipeline import run as run_module
+
+    async def low(fresh: bool = False) -> int:
+        return 120
+
+    async def must_not_expand(query: str) -> list[str]:
+        raise AssertionError("при исчерпанном лимите модель не зовём")
+
+    monkeypatch.setattr("src.pipeline.deps.openalex_credits", low)
+    monkeypatch.setattr("src.pipeline.run.expand_query", must_not_expand)
+    monkeypatch.setattr("src.pipeline.deps.save_search_result", lambda result: None)
+
+    result = await run_module.run("перспективные технологии в агротехе")
+
+    assert result.status == "error" and "OpenAlex" in (result.error or "") and "120" in result.error
+
+
+async def test_openalex_credits_are_cached_between_health_polls(monkeypatch: pytest.MonkeyPatch):
+    from src.collectors import openalex
+    from src.pipeline import deps
+
+    monkeypatch.undo()  # вернуть настоящую deps.openalex_credits вместо заглушки из conftest
+    calls = []
+
+    async def fake_credits_left(settings, client) -> int:
+        calls.append(1)
+        return 5000
+
+    monkeypatch.setattr(openalex, "credits_left", fake_credits_left)
+    monkeypatch.setattr(deps, "_credits_cache", {})
+
+    assert await deps.openalex_credits() == 5000
+    assert await deps.openalex_credits() == 5000
+    assert await deps.openalex_credits(fresh=True) == 5000
+    assert len(calls) == 2

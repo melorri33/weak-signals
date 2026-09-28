@@ -132,6 +132,11 @@ async def run(
         if on_progress is not None:
             on_progress(result)
 
+    if settings.openalex_min_credits > 0:
+        left = await deps.openalex_credits(fresh=True)
+        if left is not None and left < settings.openalex_min_credits:
+            return _failed(result, started, openalex_limit_message(left, settings.openalex_min_credits))
+
     progress("расширяем запрос")
     phrases = await _with_budget("expand_query", llm_budget(EXPAND_BUDGET_S), expand_query(query), default=[])
     result.expanded_phrases = phrases or [query]
@@ -544,6 +549,15 @@ async def _with_budget(step: str, budget_s: float, work: Awaitable[T], default: 
     finally:
         log.info("Шаг %s: %.1f с из %.0f с бюджета", step, time.perf_counter() - started, budget_s)
     return default
+
+
+def openalex_limit_message(left: int, need: int) -> str:
+    """Текст для пользователя: лимит OpenAlex на сегодня кончается."""
+    return (
+        f"Лимит научного источника OpenAlex на сегодня почти исчерпан: осталось {left} кредитов, "
+        f"а на один запрос нужно около {need}. Лимит обновляется в 03:00 по Москве; "
+        "запас можно докупить на openalex.org/pricing. Готовые прогоны открываются как обычно."
+    )
 
 
 def _failed(result: SearchResult, started: float, message: str) -> SearchResult:

@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
@@ -93,6 +94,29 @@ async def term_stats(term: str) -> TermStats | None:
         _warn_once("collectors.term_stats")
         return None
     return await real(term)
+
+
+# Остаток кредитов OpenAlex спрашиваем не чаще раза в 10 минут: интерфейс опрашивает /health каждые 30 с,
+# и без кэша одна только проверка съедала бы почти 3 000 кредитов в сутки из 10 000.
+CREDITS_CACHE_S = 600
+_credits_cache: dict[str, tuple[float, int | None]] = {}
+
+
+async def openalex_credits(fresh: bool = False) -> int | None:
+    """Остаток дневных кредитов ключа OpenAlex (collectors.openalex.credits_left); None — не узнать."""
+    now = time.monotonic()
+    cached = _credits_cache.get("left")
+    if cached and not fresh and now - cached[0] < CREDITS_CACHE_S:
+        return cached[1]
+    import httpx
+
+    from src.collectors import openalex
+    from src.common.config import get_settings
+
+    async with httpx.AsyncClient() as client:
+        left = await openalex.credits_left(get_settings(), client)
+    _credits_cache["left"] = (now, left)
+    return left
 
 
 def save_documents(docs: list[Document]) -> None:

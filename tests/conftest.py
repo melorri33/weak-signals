@@ -23,3 +23,13 @@ def _no_embeddings_for_ranking(monkeypatch):
     from src.model import relevance
 
     monkeypatch.setattr(relevance, "_embed", lambda _texts, step: None)
+
+
+@pytest.fixture(autouse=True)
+def _no_openalex_credits_check(monkeypatch):
+    """Проверка остатка кредитов OpenAlex ходит в сеть — в офлайн-тестах остатка «не узнать» (None)."""
+
+    async def unknown(fresh: bool = False) -> None:
+        return None
+
+    monkeypatch.setattr("src.pipeline.deps.openalex_credits", unknown)

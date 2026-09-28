@@ -28,6 +28,7 @@ from src.common.logs import get_logger
 from src.common.schemas import SearchResult, SignalCard
 from src.llm.client import LLMClient
 from src.pipeline import deps
+from src.pipeline.run import openalex_limit_message
 
 log = get_logger(__name__)
 
@@ -51,6 +52,10 @@ class Health(BaseModel):
     llm_available: bool
     database_available: bool
     active_runs: list[str]
+    openalex_credits: int | None = Field(
+        default=None,
+        description="остаток дневных кредитов ключа OpenAlex (обновляется раз в 10 минут); None — не узнать",
+    )
     notes: list[str] = Field(default_factory=list, description="что не готово, по-русски")
 
 
@@ -136,11 +141,15 @@ async def health() -> Health:
     database_available = await asyncio.to_thread(deps.database_ok)
     if not database_available:
         notes.append("База недоступна: готовые прогоны сохраняются только в файлы data/search_runs")
+    openalex_credits = await deps.openalex_credits()
+    if openalex_credits is not None and openalex_credits < settings.openalex_min_credits:
+        notes.append(openalex_limit_message(openalex_credits, settings.openalex_min_credits))
     return Health(
         status="ok" if llm_available and database_available else "degraded",
         llm_model=settings.llm_model,
         llm_available=llm_available,
         database_available=database_available,
         active_runs=registry.active,
+        openalex_credits=openalex_credits,
         notes=notes,
     )
