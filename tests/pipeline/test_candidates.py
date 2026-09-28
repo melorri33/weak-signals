@@ -541,3 +541,16 @@ async def test_no_rescue_when_document_already_has_candidate(rescue_on):
     await extract_candidates(docs, client=client)
 
     assert len(client.prompts) == 1
+
+
+async def test_read_limit_comes_from_settings(monkeypatch: pytest.MonkeyPatch):
+    """Облачной модели даём прочитать больше собранного: предел — MAX_DOCS_FOR_LLM в .env."""
+    from src.common.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "max_docs_for_llm", 16)
+    docs = [_doc(str(i), f"Работа {i}") for i in range(40)]  # пять пачек по 8
+    client = _FakeClient([{"candidates": [{"name": "grid sensor", "document_ids": ["d1"]}]}])
+
+    await extract_candidates(docs, client=client)
+
+    assert len(client.prompts) == 2

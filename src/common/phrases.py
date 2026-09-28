@@ -22,6 +22,10 @@ FRESH_TEMPLATES = (
     "{area} startup emerges from stealth",
     "{area} startup launches",
     "{area} seed round",
+    # 28.09: не только раунды — запуски, разработки лабораторий и пилоты; проверяются полным прогоном.
+    "{area} startup unveils",
+    "{area} researchers develop",
+    "{area} pilot deployment",
 )
 
 _FRESH_TAILS = tuple(template.split("{area} ", 1)[1] for template in FRESH_TEMPLATES)

@@ -852,3 +852,78 @@ robo-advisor,Финтех,mature
 decentralized identity,Финтех,borderline
 cryptographic security,Финтех,too_broad
 autonomous ai agents,Финтех,too_broad
+indium-gallium-zinc oxide,Edge,mature
+neural network handwriting erasure,Edge,off_topic
+distributed ml simulation,Edge,too_broad
+group distillation,Edge,not_a_technology
+prefill/decode-aware evaluation,Edge,not_a_technology
+barrier-free synchronization algorithm,Edge,not_a_technology
+ml runtime,Edge,too_broad
+diffusion purification,Защита ИИ,weak_signal
+formal neural network verification,Защита ИИ,weak_signal
+surrogate-assisted genetic algorithm,Защита ИИ,not_a_technology
+sl-cbm,Защита ИИ,not_a_technology
+symmetry-breaking dimensional expansion,Защита ИИ,not_a_technology
+paillier homomorphic encryption,Защита ИИ,mature
+transformer-lstm models,Защита ИИ,not_a_technology
+radioscopic generator,Защита ИИ,off_topic
+3d generative ai,Защита ИИ,off_topic
+crypto asset custody,Защита ИИ,off_topic
+hybrid gnn-lstm,Защита ИИ,not_a_technology
+bbm92 quantum key distribution,Защита ИИ,mature
+diffusion model watermarking,Защита ИИ,weak_signal
+poisoned model detection,Защита ИИ,weak_signal
+taylor truncation,Защита ИИ,not_a_technology
+symbolic interval propagation,Защита ИИ,not_a_technology
+neurosymbolic operational intelligence,Индустриальный ИИ,weak_signal
+cellular-enabled collaborative robots,Индустриальный ИИ,weak_signal
+ai-generated digital twins,Индустриальный ИИ,weak_signal
+solar integrated electric buses,Индустриальный ИИ,off_topic
+masked feature modeling,Индустриальный ИИ,not_a_technology
+linearized subspace refinement,Индустриальный ИИ,not_a_technology
+phonon boltzmann transport equation,Индустриальный ИИ,not_a_technology
+policy digital twins,Индустриальный ИИ,off_topic
+chiral photonic metasurface,Индустриальный ИИ,not_a_technology
+mask autoencoder,Индустриальный ИИ,not_a_technology
+side-channel-resistant risc-v core,Индустриальный ИИ,off_topic
+td-mpc2,Индустриальный ИИ,not_a_technology
+micro-doppler signature,Индустриальный ИИ,not_a_technology
+active-passive beamforming,Индустриальный ИИ,not_a_technology
+twistronic heterostructure,Индустриальный ИИ,not_a_technology
+spectral norm balls,Индустриальный ИИ,not_a_technology
+robotic targeted drug delivery,Индустриальный ИИ,off_topic
+wavelet-enhanced mamba,Индустриальный ИИ,not_a_technology
+serverless mlops,Инфраструктура ИИ,weak_signal
+hollow-core fiber,Инфраструктура ИИ,weak_signal
+holographic transmission,Инфраструктура ИИ,off_topic
+inter-satellite link optimization,Инфраструктура ИИ,off_topic
+matrix product operator,Инфраструктура ИИ,not_a_technology
+photonic tensor cores,Инфраструктура ИИ,weak_signal
+hfo2-based ferroelectric memory,Инфраструктура ИИ,weak_signal
+electronic-photonic interconnect,Инфраструктура ИИ,weak_signal
+tiled matrix multiplication,Инфраструктура ИИ,not_a_technology
+matrix-multiply-accumulate units,Инфраструктура ИИ,mature
+sparse tensor algebra,Инфраструктура ИИ,not_a_technology
+soft robotic morphing wings,Роботы,weak_signal
+fabric pneumatic artificial muscle,Роботы,weak_signal
+antagonistic artificial muscles,Роботы,weak_signal
+helical microrobots,Роботы,weak_signal
+center-of-mass adjustment,Роботы,not_a_technology
+flexoelectric effects,Роботы,not_a_technology
+soft morphing wings,Роботы,weak_signal
+hermes agents,Роботы,product
+physiological sensor integration,Роботы,too_broad
+tokenized carbon assets,Финтех,weak_signal
+real estate asset tokenization,Финтех,weak_signal
+continuous behavioral biometric authentication,Финтех,weak_signal
+blockchain mining pools,Финтех,mature
+wrapped tokens,Финтех,mature
+aes-256-gcm encryption,Финтех,mature
+deepfake speech synthesis,Финтех,off_topic
+solar cybersecurity,Финтех,off_topic
+sha-256 integrity verification,Финтех,mature
+constrained markov decision process,Финтех,not_a_technology
+blockchain lifecycle,Финтех,too_broad
+cloud gpu cluster,Финтех,mature
+shadow ai,Финтех,off_topic
+decentralized crypto exchange,Финтех,mature
