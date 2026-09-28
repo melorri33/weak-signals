@@ -22,9 +22,14 @@ search_feeds:
     url: "https://theaiinsider.tech/?s={query}&feed=rss2"
   - name: venturebeat
     url: "https://venturebeat.com/?s={query}&feed=rss2"
+  # EE Times — один из главных источников датасета (чипы, edge, инфраструктура ИИ). Поиск в ленте
+  # у издания есть: проверка 28.09 — 10 записей с апреля по сентябрь 2026. У The Robot Report,
+  # DatacenterDynamics, HPCwire поиск в ленте закрыт (403) — их по-прежнему находит Bing.
+  - name: eetimes
+    url: "https://www.eetimes.com/?s={query}&feed=rss2"
 
   # Поиск сразу по всем изданиям: так в выдачу попадают отраслевые медиа, у которых нет
-  # собственного поиска в ленте (EE Times, DatacenterDynamics, The Robot Report и другие).
+  # собственного поиска в ленте (DatacenterDynamics, The Robot Report и другие).
   - name: bing_news
     url: "https://www.bing.com/news/search?q=%22{query}%22&format=RSS"
     unwrap: bing
