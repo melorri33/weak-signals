@@ -37,6 +37,7 @@ from src.filters.rules import without_generic_tail
 from src.llm.cards import NoSourcesError, make_card
 from src.llm.expand_query import expand_query
 from src.model import score
+from src.model.relevance import drop_near_duplicates, with_topic_relevance
 from src.pipeline import deps
 from src.pipeline.candidates import extract_candidates
 from src.pipeline.technology import not_technology
@@ -168,6 +169,7 @@ async def run(
     # и считает эмбеддинги на процессоре. Внутри цикла это минутами блокировало API — интерфейс не мог
     # даже узнать шаг прогона. Журнал моделей не теряется: to_thread копирует контекст с тем же списком.
     scored = await asyncio.to_thread(_score, kept, features_kept)
+    scored = await asyncio.to_thread(with_topic_relevance, scored, query, result.expanded_phrases)
     scored = await _drop_off_topic(query, scored, result)
 
     result.scored = scored
@@ -177,7 +179,7 @@ async def run(
 
     progress("собираем карточки")
     _log_near_misses(scored)
-    result.top = await _cards(drop_name_variants(scored), candidates, docs)
+    result.top = await _cards(drop_near_duplicates(drop_name_variants(scored)), candidates, docs)
     result.confident_signals = sum(card.score > CONFIDENT_THRESHOLD for card in result.top)
 
     result.status = "done"
