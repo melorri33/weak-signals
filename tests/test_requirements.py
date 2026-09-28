@@ -1,7 +1,7 @@
 """Зависимости образа не должны разъезжаться с requirements.txt.
 
 В образ ставится подмножество (docker/requirements-app.txt): обучение и отчёты в контейнере не нужны,
-а torch с соседями добавляет к образу гигабайты. Подмножество легко забыть обновить — отсюда тест.
+а они только утяжеляют образ. Подмножество легко забыть обновить — отсюда тест.
 """
 
 from pathlib import Path
@@ -15,7 +15,6 @@ DEV_ONLY = {
     "scikit-learn",
     "catboost-dev",
     "shap",
-    "sentence-transformers",
     "matplotlib",
     "openpyxl",
     "pytest",

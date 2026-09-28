@@ -4,7 +4,12 @@
 #   ollama    — модель на хосте, из контейнеров зовём её по host.docker.internal:11434 (по умолчанию);
 #   ollama    — модель отдельным сервисом: `docker compose --profile local-llm up -d`
 #               и OLLAMA_URL_IN_DOCKER=http://ollama:11434 в .env (машине без видеокарты будет тяжело);
-#   yandexgpt — облако из списка ТЗ, нужны YANDEX_API_KEY и YANDEX_FOLDER_ID в .env.
+#   yandexgpt — облако из списка ТЗ, нужны YANDEX_API_KEY и YANDEX_FOLDER_ID в .env;
+#   gigachat  — облако из списка ТЗ, нужны GIGACHAT_CREDENTIALS и сертификат в data/certs.
+#
+# Наружу смотрит только веб-интерфейс (WEB_PORT). База, API и Streamlit слушают 127.0.0.1:
+# на стенде в интернете они не должны быть открыты всем — к API интерфейс ходит через nginx.
+# Открыть их с других машин: PUBLISH_HOST=0.0.0.0 в .env.
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -14,7 +19,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weak}
       POSTGRES_DB: ${POSTGRES_DB:-weak_signals}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${PUBLISH_HOST:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
@@ -30,6 +35,11 @@ services:
     image: weak-signals-app
     container_name: weak-signals-api
     command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    # Все настройки конвейера из .env: ключи GigaChat, MAX_DOCS_FOR_LLM, LLM_BUDGET_SCALE и прочие.
+    # Строки environment ниже важнее .env — в них то, что внутри compose должно быть другим.
+    env_file: &app-env-file
+      - path: .env
+        required: false
     environment: &app-env
       # Внутри сети compose база называется db, а не localhost, поэтому DATABASE_URL из .env здесь не годится.
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-weak}:${POSTGRES_PASSWORD:-weak}@db:5432/${POSTGRES_DB:-weak_signals}
@@ -47,7 +57,7 @@ services:
       MAX_DOCUMENTS: ${MAX_DOCUMENTS:-2000}
       COLLECT_BUDGET_S: ${COLLECT_BUDGET_S:-60}
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${PUBLISH_HOST:-127.0.0.1}:${API_PORT:-8000}:8000"
     volumes:
       # Прогоны и кэш ответов модели видны на хосте и общие у api с ui.
       - ./data:/app/data
@@ -71,9 +81,10 @@ services:
     container_name: weak-signals-ui
     # Интерфейс зовёт конвейер напрямую, поэтому ему нужны те же настройки, что и API.
     command: streamlit run src/ui/app.py --server.port 8501 --server.address 0.0.0.0
+    env_file: *app-env-file
     environment: *app-env
     ports:
-      - "${UI_PORT:-8501}:8501"
+      - "${PUBLISH_HOST:-127.0.0.1}:${UI_PORT:-8501}:8501"
     volumes:
       - ./data:/app/data
     extra_hosts:

@@ -12,8 +12,12 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Зависимости отдельным слоем: правка кода не пересобирает установку пакетов.
+# torch — сборка для процессора: модели названий и близости к теме хватает CPU, а сборка с CUDA
+# весит на несколько гигабайт больше. Ставим её до requirements-app.txt, иначе sentence-transformers
+# притянет сборку с CUDA.
 COPY docker/requirements-app.txt ./
-RUN pip install --no-cache-dir -r requirements-app.txt
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r requirements-app.txt
 
 # Код и всё, что читается на прогоне: правила отсева и доверия (config), обученная модель
 # (src/model/artifacts), фикстуры и тестовые запросы (нужны заглушкам и проверке «как у жюри»).
@@ -23,7 +27,9 @@ COPY tests/fixtures ./tests/fixtures
 COPY tests/queries.yaml ./tests/
 COPY pyproject.toml README.md ./
 
-# Результаты прогонов и кэш ответов модели — на смонтированном томе ./data.
+# Результаты прогонов и кэш ответов модели — на смонтированном томе ./data. Туда же — веса bge-m3
+# (около 2 ГБ): качаются при первом прогоне один раз и переживают пересборку образа.
+ENV HF_HOME=/app/data/hf
 VOLUME /app/data
 
 EXPOSE 8000 8501

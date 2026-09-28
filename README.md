@@ -6,21 +6,28 @@
 
 Кейс Газпромбанк.Тех. Контекст проекта и правила работы команды — в [CLAUDE.md](CLAUDE.md).
 
-## Что уже работает
+## Как устроен прогон
 
-Конвейер целиком проходит в консоли. Часть шагов пока заглушки (они честно помечены в логе
-прогона строками «… ещё не готов — работаю на заглушке»):
+Конвейер целиком проходит в консоли, через API и в веб-интерфейсе. Языковая модель в нём
+формулирует, читает и пишет, но **решение «сигнал или нет» принимают признаки и модели**
+(CatBoost по динамике публикаций и модель названий), с объяснением через SHAP.
 
-| Шаг | Состояние |
+| Шаг | Как сделан |
 | --- | --- |
-| Расширение запроса в поисковые фразы | локальная LLM, при недоступности — фразы из самого запроса |
-| Сбор источников и статистика по терминам | настоящие источники: техноновости, OpenAlex, arXiv, Hacker News, Википедия |
-| Хранилище | PostgreSQL; база не поднята — конвейер работает, но прогон не переживёт перезапуск |
-| Выделение кандидатов | заглушка на правилах (LLM + эмбеддинги — дальше по плану) |
-| Признаки и скоринг | CatBoost со SHAP-объяснением |
-| Уровни доверия и правила отсева | настоящие: `config/trust_domains.yaml`, `config/filter_rules.yaml` |
-| Карточки сигналов | источники настоящие (только из собранных документов), тексты — заглушка |
-| API и интерфейс | FastAPI (`POST /search`, `GET /search/{run_id}`) и Streamlit |
+| Расширение запроса | языковая модель: поисковые фразы RU+EN и фразы свежести о стартапах области |
+| Сбор документов | техноновости (RSS), OpenAlex, arXiv, Hacker News, Википедия — до 2000 документов |
+| Выделение кандидатов | языковая модель читает документы пачками; порядок перед пределом в 150 — по модели названий |
+| Статистика по терминам | публикации по годам из OpenAlex точной фразой |
+| Отсев | зрелое, массовое, хайп и шум по правилам `config/filter_rules.yaml`; причина сохраняется |
+| Скоринг | CatBoost + модель названий (эмбеддинги bge-m3), вклад признаков — SHAP |
+| Проверка верха списка | чужая область запроса и «не технология» (научный метод, зрелый стандарт) уходят в отсеянные с причиной |
+| Карточки топ-15 | описание, преимущество, кейс, почему слабый сигнал — только по собранным документам; ссылки из них же |
+| Хранилище | PostgreSQL и файлы `data/search_runs/`; без базы конвейер работает |
+| Интерфейс | React (`web/`) поверх FastAPI; Streamlit — запасной |
+
+**Время одного запроса** — около 16 минут на GigaChat 2 Max с настройками стенда (ниже): ключ
+физлица пропускает один запрос к модели за раз. Отдельной подготовки данных нет: всё собирается
+под запрос.
 
 ## Запуск с нуля
 
@@ -238,7 +245,7 @@ docker compose exec api python -m src.pipeline.cli "перспективные �
 | --- | --- |
 | Ollama на хосте (по умолчанию) | `OLLAMA_URL_IN_DOCKER=http://host.docker.internal:11434` |
 | Ollama в контейнере | `docker compose --profile local-llm up -d`, затем `OLLAMA_URL_IN_DOCKER=http://ollama:11434` и `docker compose exec ollama ollama pull qwen3:8b` |
-| Облако | `LLM_PROVIDER=yandexgpt` и ключи — адрес Ollama не нужен |
+| Облако | `LLM_PROVIDER=yandexgpt` или `gigachat` и ключи — адрес Ollama не нужен |
 
 `DATABASE_URL` внутри compose подставляется сам (хост `db` вместо `localhost`), значение из `.env`
 для контейнеров не используется — оно нужно процессам на хосте.
@@ -246,6 +253,66 @@ docker compose exec api python -m src.pipeline.cli "перспективные �
 Пересобрать образ после правки зависимостей: `docker compose build --no-cache api`.
 Зависимости образа — `docker/requirements-app.txt`: подмножество `requirements.txt` без обучения
 и отчётов, иначе в образ приезжают torch и соседи (за этим следит `tests/test_requirements.py`).
+
+## Стенд для жюри на VPS
+
+Языковая модель — в облаке, поэтому серверу видеокарта не нужна. Память уходит на процесс API
+с моделью названий (bge-m3 на процессоре: пик около 1,8 ГБ, замер на MacBook 28.09), PostgreSQL и nginx.
+
+| | Минимум | Удобно |
+| --- | --- | --- |
+| Процессор | 2 vCPU | 4 vCPU |
+| Память | 4 ГБ + 4 ГБ swap | 8 ГБ |
+| Диск | 40 ГБ SSD/NVMe | 50–80 ГБ |
+| Система | Ubuntu 22.04/24.04, x86_64 | то же |
+
+Диск: образ приложения с torch для процессора (прежний образ без него — 1,7 ГБ), веса bge-m3 —
+около 2,3 ГБ, плюс кэш сборки Docker и база.
+
+```bash
+# 1. Docker и код
+curl -fsSL https://get.docker.com | sh
+git clone https://github.com/melorri33/weak-signals.git && cd weak-signals
+
+# 2. На 4 ГБ памяти — swap, чтобы сборка и первый прогон не упёрлись в память
+sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+
+# 3. Настройки и сертификат GigaChat
+cp .env.example .env
+mkdir -p data/certs
+curl -o data/certs/russian_trusted_root_ca_pem.crt https://gu-st.ru/content/lending/russian_trusted_root_ca_pem.crt
+```
+
+В `.env` стенда:
+
+```bash
+LLM_PROVIDER=gigachat
+LLM_MODEL=GigaChat-2-Max
+GIGACHAT_CREDENTIALS=…          # ключ команды; в репозиторий не попадает
+OPENALEX_API_KEY=…              # без ключа OpenAlex быстро отвечает 429
+EXTRACT_RESCUE=1
+LLM_BUDGET_SCALE=4
+MAX_DOCS_FOR_LLM=1000
+CHECK_TECHNOLOGY=1
+WEB_PORT=80                     # интерфейс на http://<адрес сервера>/
+```
+
+```bash
+# 4. Сборка и запуск
+docker compose up -d --build db api web
+docker compose ps               # db и api — healthy
+
+# 5. Веса bge-m3 заранее, чтобы первый запрос жюри не ждал скачивания (~2,3 ГБ в data/hf)
+docker compose exec api python -c "from src.model import names; print(names.name_scores(['solid-state battery']))"
+curl -s localhost:8000/health   # "llm_available": true
+```
+
+Если Hugging Face с сервера недоступен, скопируй кэш с машины, где модель уже скачана:
+`rsync -a ~/.cache/huggingface/ <сервер>:weak-signals/data/hf/`.
+
+Наружу открыт только порт веб-интерфейса. База, API и Streamlit слушают `127.0.0.1`,
+к API интерфейс ходит через nginx (`/api`). Прогон идёт один за раз: пока он не закончился,
+второй поиск получает ответ «прогон уже идёт», а готовые поиски открываются сразу.
 
 ## Тесты и проверки
 
@@ -271,9 +338,15 @@ cd web && npm test && npm run lint   # веб-интерфейс
 | `GIGACHAT_CREDENTIALS`, `GIGACHAT_CA_BUNDLE` | доступ к облаку при `LLM_PROVIDER=gigachat` | пусто |
 | `LLM_CACHE` | кэшировать ответы модели в `data/llm_cache` (`0` — выключить) | `1` |
 | `API_PORT`, `UI_PORT`, `WEB_PORT` | порты API, Streamlit и веб-интерфейса на хосте | `8000`, `8501`, `3000` |
-| `EMBED_MODEL` | модель эмбеддингов для склейки кандидатов | `BAAI/bge-m3` |
+| `EMBED_MODEL` | кодировщик модели названий | `BAAI/bge-m3` |
+| `MAX_DOCS_FOR_LLM` | сколько собранных документов читает модель выделения кандидатов | `500` |
+| `LLM_BUDGET_SCALE` | множитель времени шагов с моделью: облаку — время дочитать документы | `1` |
+| `EXTRACT_RESCUE` | второй вопрос модели по новостям о стартапах | `0` |
+| `CHECK_TECHNOLOGY` | отсев «не технология» среди верхних кандидатов | `1` |
+| `FRESH_PHRASES` | фразы свежести: новости о стартапах области запроса | `1` |
+| `PUBLISH_HOST` | на каком адресе хоста Docker открывает базу, API и Streamlit | `127.0.0.1` |
 | `DATABASE_URL` | подключение к PostgreSQL | `postgresql+psycopg://weak:weak@localhost:5432/weak_signals` |
-| `MAX_DOCUMENTS` | сколько документов собираем максимум | `500` |
+| `MAX_DOCUMENTS` | сколько документов собираем максимум | `2000` |
 | `SOURCE_TIMEOUT_S`, `COLLECT_BUDGET_S` | таймаут источника и бюджет всего сбора | `15`, `60` |
 
 ## Структура
@@ -294,7 +367,7 @@ web/             веб-интерфейс: React, Vite, shadcn/ui; Dockerfile �
 | --- | --- |
 | `Ollama недоступна на http://localhost:11434` | не запущен Ollama: `brew services start ollama` или `ollama serve` |
 | `Модель … не скачана` | `ollama pull qwen3:8b` (или та, что стоит в `LLM_MODEL`) |
-| В логе «… ещё не готов — работаю на заглушке» | так и задумано: модуль ещё пишется, конвейер идёт дальше |
+| В логе «Модель названий не сработала» | нет `sentence-transformers` или весов bge-m3; конвейер идёт на одном CatBoost, выдача хуже. `pip install -r requirements.txt`, в Docker — пересобрать образ |
 | Прогон падает на `db` | база не нужна для CLI; если нужна — `docker compose up -d db` |
 | Прогон идёт дольше 5 минут | выгрузи лишние модели (`ollama stop qwen3:4b`) или поставь `LLM_MODEL=qwen3:4b` |
 | API отвечает `429` | прогон уже идёт, номер текущего — в тексте ошибки; дождись его или посмотри `GET /health` |
