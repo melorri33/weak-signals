@@ -94,3 +94,19 @@ def test_missing_publication_count_does_not_exclude():
     )
 
     assert not decision.excluded
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("perovskite solar cell tiles", "perovskite solar cell"),
+        ("soil moisture sensing protocol", "soil moisture sensing"),
+        ("grid storage adaptability", "grid storage"),
+        ("sensor protocol", None),  # останется одно слово
+        ("perovskite solar cells", None),  # хвост не общий
+    ],
+)
+def test_generic_tail_is_cut_only_when_two_words_remain(name: str, expected: str | None):
+    from src.filters.rules import without_generic_tail
+
+    assert without_generic_tail(name) == expected

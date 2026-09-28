@@ -32,6 +32,8 @@ from src.common.schemas import (
     TermStats,
 )
 from src.features import compute
+from src.filters.rules import rules as filter_rules
+from src.filters.rules import without_generic_tail
 from src.llm.cards import NoSourcesError, make_card
 from src.llm.expand_query import expand_query
 from src.model import score
@@ -298,7 +300,8 @@ async def _features(
     async def stats_for(candidate: Candidate) -> tuple[str, TermStats | None]:
         async with semaphore:
             try:
-                return candidate.id, await deps.term_stats(candidate.name)
+                stats = await deps.term_stats(candidate.name)
+                return candidate.id, await _without_tail_if_unresearched(candidate, stats)
             except Exception as exc:
                 log.warning("term_stats(%s) не отработал: %s", candidate.name, exc)
                 return candidate.id, None
@@ -327,6 +330,26 @@ async def _features(
         )
     features = [compute(c, docs, stats_by_id.get(c.id)) for c in candidates]
     return features, {cid: stats for cid, stats in stats_by_id.items() if stats is not None}
+
+
+async def _without_tail_if_unresearched(candidate: Candidate, stats: TermStats | None) -> TermStats | None:
+    """Название «доуточнено» общим словом и без следа в науке — пробуем без хвоста (src/filters/rules.py).
+
+    Меняем название, только если у короткого есть исследования и оно не зрелое по тем же порогам,
+    что у правил отсева. Документы кандидата те же, меняется подпись и статистика.
+    """
+    cfg = filter_rules()
+    pubs = sum(stats.pubs_by_year.values()) if stats and stats.pubs_by_year else None
+    shorter = without_generic_tail(candidate.name)
+    if pubs is None or pubs >= cfg["no_research"]["total_pubs_min"] or shorter is None:
+        return stats
+    alt = await deps.term_stats(shorter)
+    alt_pubs = sum(alt.pubs_by_year.values()) if alt and alt.pubs_by_year else 0
+    if not cfg["no_research"]["total_pubs_min"] <= alt_pubs <= cfg["mature"]["total_pubs_min"]:
+        return stats
+    log.info("Название без общего хвоста: «%s» → «%s» (%d работ вместо %d)", candidate.name, shorter, alt_pubs, pubs)
+    candidate.name = shorter
+    return alt
 
 
 def _apply_filters(

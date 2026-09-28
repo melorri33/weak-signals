@@ -37,6 +37,31 @@ def _noise(f: CandidateFeatures, cfg: dict[str, Any]) -> str | None:
     return None
 
 
+# Общие слова, которыми модель выделения «доуточняет» название технологии: «… tiles», «… protocol»,
+# «… adaptability». По точной фразе у такого названия одна-две работы, и правило «нет следа»
+# отсеивало саму технологию: 27–28.09 так ушли три технологии датасета за четыре прогона.
+# Конвейер в таком случае пробует название без хвоста (src/pipeline/run.py::_features).
+GENERIC_TAILS = frozenset(
+    {
+        "adaptability", "application", "applications", "approach", "architecture", "architectures",
+        "capabilities", "capability", "deployment", "design", "device", "devices", "engine",
+        "enhancement", "framework", "frameworks", "implementation", "integration", "layer", "mechanism",
+        "method", "methods", "model", "models", "module", "modules", "optimization", "paradigm",
+        "paradigms", "pipeline", "platform", "platforms", "protocol", "protocols", "scheme", "solution",
+        "solutions", "stack", "strategy", "structure", "suite", "system", "systems", "technologies",
+        "technology", "tile", "tiles", "toolkit", "unit", "units",
+    }
+)  # fmt: skip
+
+
+def without_generic_tail(name: str) -> str | None:
+    """Название без общего слова в конце, если остаётся хотя бы два слова; иначе None."""
+    words = name.split()
+    if len(words) >= 3 and words[-1].lower() in GENERIC_TAILS:
+        return " ".join(words[:-1])
+    return None
+
+
 def _no_research(f: CandidateFeatures, cfg: dict[str, Any]) -> str | None:
     if f.total_pubs is not None and f.total_pubs < cfg["total_pubs_min"]:
         return (
