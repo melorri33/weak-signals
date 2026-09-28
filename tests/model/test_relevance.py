@@ -39,6 +39,8 @@ def test_candidate_close_to_topic_overtakes_foreign_one():
     assert [s.name for s in out][:2] == ["weed spraying drone", "drug screening organoids"]
     reason = next(r for r in out[0].top_reasons if r.feature == "topic_relevance")
     assert reason.contribution > 0 and reason.text == "Близко к теме запроса"
+    foreign = next(s for s in out if s.name == "drug screening organoids")
+    assert not any(r.feature == "topic_relevance" for r in foreign.top_reasons)  # довод «против» не показываем
 
 
 def test_fresh_phrases_do_not_define_the_topic_and_zero_weight_changes_nothing(monkeypatch: pytest.MonkeyPatch):

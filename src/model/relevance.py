@@ -39,13 +39,17 @@ def with_topic_relevance(scored: list[ScoredCandidate], query: str, phrases: lis
     out = []
     for item, value in zip(scored, closeness, strict=True):
         delta = weight * (float(value) - median)
-        reason = Explanation(
-            feature="topic_relevance",
-            value=round(float(value), 4),
-            contribution=round(delta, 4),
-            text="Близко к теме запроса" if delta > 0 else "Дальше от темы запроса, чем большинство кандидатов",
-        )
-        reasons = [*item.top_reasons[:1], reason, *item.top_reasons[1:]]
+        reasons = item.top_reasons
+        # В причины — только довод «за»: прогон 28.09 показал, что «дальше от темы» у верхних карточек
+        # сбивает с толку (у них высокая оценка по другим причинам), а поправка к оценке и так учтена.
+        if delta > 0:
+            reason = Explanation(
+                feature="topic_relevance",
+                value=round(float(value), 4),
+                contribution=round(delta, 4),
+                text="Близко к теме запроса",
+            )
+            reasons = [*item.top_reasons[:1], reason, *item.top_reasons[1:]]
         out.append(
             item.model_copy(update={"score": round(min(max(item.score + delta, 0.0), 1.0), 4), "top_reasons": reasons})
         )
