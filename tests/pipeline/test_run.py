@@ -466,3 +466,24 @@ async def test_off_topic_candidate_goes_to_excluded(monkeypatch: pytest.MonkeyPa
     assert len(alien) == 1
     assert alien[0].candidate_id not in {s.candidate_id for s in result.scored}
     assert alien[0].candidate_id not in {c.candidate_id for c in result.top}
+
+
+async def test_overspecified_name_without_research_loses_its_generic_tail(monkeypatch: pytest.MonkeyPatch):
+    """«… protocol» без следа в науке, а без хвоста работы есть — кандидат идёт под коротким именем."""
+    from src.common.schemas import Candidate, TermStats
+    from src.pipeline.run import _without_tail_if_unresearched
+
+    counts = {"soil moisture sensing protocol": 1, "soil moisture sensing": 40, "vertical farm robot stack": 1}
+
+    async def stats(term: str) -> TermStats:
+        return TermStats(term=term, pubs_by_year={2025: counts.get(term, 0)} if counts.get(term) else {})
+
+    monkeypatch.setattr("src.pipeline.deps.term_stats", stats)
+    shortened = Candidate(id="a", name="soil moisture sensing protocol")
+    kept = Candidate(id="b", name="vertical farm robot stack")  # у короткого тоже нет работ
+
+    new = await _without_tail_if_unresearched(shortened, await stats(shortened.name))
+    same = await _without_tail_if_unresearched(kept, await stats(kept.name))
+
+    assert (shortened.name, sum(new.pubs_by_year.values())) == ("soil moisture sensing", 40)
+    assert (kept.name, sum(same.pubs_by_year.values())) == ("vertical farm robot stack", 1)
