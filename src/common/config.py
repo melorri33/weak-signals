@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     # Проверка верха списка моделью: не метод ли из статьи и не зрелый стандарт (src/pipeline/technology.py).
     # Выключается, чтобы сравнить прогоны.
     check_technology: bool = True
+    # Поправки к ранжированию по эмбеддингам (src/model/relevance.py): вес близости к теме запроса
+    # (0 — выключить) и порог почти-дубля по смыслу названий (1 — выключить).
+    topic_relevance_weight: float = 0.3
+    near_duplicate_threshold: float = 0.85
 
     # Эмбеддинги
     embed_model: str = "BAAI/bge-m3"

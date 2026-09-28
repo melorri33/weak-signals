@@ -12,3 +12,14 @@ def _no_name_model(monkeypatch):
     from src.model import names
 
     monkeypatch.setattr(names, "name_scores", lambda _names, **_kwargs: None)
+
+
+@pytest.fixture(autouse=True)
+def _no_embeddings_for_ranking(monkeypatch):
+    """Близость к теме и почти-дубли считают эмбеддинги bge-m3 — в офлайн-тестах без них.
+
+    Тесты самих поправок (tests/model/test_relevance.py) подменяют _embed своей заглушкой.
+    """
+    from src.model import relevance
+
+    monkeypatch.setattr(relevance, "_embed", lambda _texts, step: None)
