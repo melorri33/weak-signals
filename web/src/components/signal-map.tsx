@@ -11,6 +11,8 @@ const RADIUS = 7
 const LABEL_MAX = 28
 const LINE = 15
 const CHAR_W = 6.6
+// Подписаны только самые уверенные: 15 подписей наезжают друг на друга и уезжают от точек.
+const LABELED = 5
 
 const CONF_FILL = {
   high: "var(--conf-high)",
@@ -55,7 +57,10 @@ export function SignalMap({
     (a, b) => statusOrder(a.status) - statusOrder(b.status)
   )
   const labels = placeLabels(
-    points.filter((p) => p.status === "top"),
+    points
+      .filter((p) => p.status === "top")
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, LABELED),
     x,
     y,
     innerW
@@ -179,8 +184,9 @@ export function SignalMap({
       <figcaption className="text-xs text-muted-foreground">
         Каждая точка — кандидат с измеренной статистикой публикаций. Слабые
         сигналы ищем в левом верхнем углу: публикаций мало, но почти все вышли
-        за последние три года. Наведите на точку, чтобы увидеть числа; точка из
-        выдачи открывает инсайт.
+        за последние три года. Подписаны пять самых уверенных сигналов, название
+        остальных — при наведении. Наведите на точку, чтобы увидеть числа; точка
+        из выдачи открывает инсайт.
         {unplaced > 0
           ? ` Без статистики и не на карте: ${unplaced} ${plural(unplaced, "кандидат", "кандидата", "кандидатов")}.`
           : ""}
