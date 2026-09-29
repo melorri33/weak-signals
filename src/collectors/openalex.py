@@ -105,6 +105,26 @@ async def _get(params: dict[str, str], settings: Settings, client: httpx.AsyncCl
     return r.json()
 
 
+async def credits_left(settings: Settings, client: httpx.AsyncClient) -> int | None:
+    """Остаток дневных кредитов ключа OpenAlex; ключа нет или OpenAlex не ответил — None.
+
+    Остаток приходит в заголовке x-ratelimit-remaining любого ответа; исчерпанный ключ отвечает 429 — это 0.
+    Проверка стоит один кредит (запрос group_by). Лимит ключа — 10 000 кредитов в сутки, сброс в полночь UTC.
+    """
+    if not settings.openalex_api_key:
+        return None
+    params = _params("solid-state battery", settings, group_by="publication_year", per_page=str(MAX_PER_PAGE))
+    try:
+        r = await client.get(API, params=params, timeout=settings.source_timeout_s)
+    except httpx.HTTPError as exc:
+        log.warning("OpenAlex: остаток кредитов не узнать (%s)", type(exc).__name__)
+        return None
+    if r.status_code == 429:
+        return 0
+    remaining = r.headers.get("x-ratelimit-remaining", "")
+    return int(remaining) if remaining.isdigit() else None
+
+
 async def search(phrase: str, settings: Settings, client: httpx.AsyncClient, limit: int = 200) -> list[Document]:
     """Документы, у которых фраза встречается в заголовке или аннотации, за последние годы."""
     from_date = date.today() - timedelta(days=365 * SEARCH_YEARS_BACK)

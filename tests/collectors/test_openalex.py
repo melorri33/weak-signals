@@ -165,3 +165,24 @@ async def test_exhausted_key_falls_back_to_anonymous(monkeypatch: pytest.MonkeyP
     assert "api_key" in calls[0]
     assert "api_key" not in calls[1], "во второй попытке ключа быть не должно"
     assert calls[1]["mailto"] == "team@example.org", "без ключа представляемся почтой"
+
+
+def _credits_client(status: int, remaining: str | None) -> httpx.AsyncClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        headers = {"x-ratelimit-remaining": remaining} if remaining is not None else {}
+        return httpx.Response(status, json={"group_by": []}, headers=headers)
+
+    return httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+
+@pytest.mark.parametrize(("status", "remaining", "expected"), [(200, "6613", 6613), (429, "0", 0), (200, None, None)])
+async def test_credits_left_reads_the_rate_limit_header(settings, status, remaining, expected):
+    settings.openalex_api_key = "test-key"
+    async with _credits_client(status, remaining) as client:
+        assert await openalex.credits_left(settings, client) == expected
+
+
+async def test_credits_left_without_key_is_unknown(settings):
+    settings.openalex_api_key = ""
+    async with _credits_client(200, "10000") as client:
+        assert await openalex.credits_left(settings, client) is None
