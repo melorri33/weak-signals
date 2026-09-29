@@ -1,7 +1,6 @@
 # Зависимости образа приложения — подмножество requirements.txt (версии совпадают, это проверяет
-# tests/test_requirements.py). Обучение модели и отчёты (scikit-learn, shap, sentence-transformers,
-# matplotlib, openpyxl) в образ не тянем: они нужны только на машине разработчика, а торч и его
-# соседи добавляют к образу несколько гигабайт. Обученная модель лежит в src/model/artifacts.
+# tests/test_requirements.py). Обучение модели и отчёты (scikit-learn, shap, matplotlib, openpyxl)
+# в образ не тянем: они нужны только на машине разработчика. Обученная модель лежит в src/model/artifacts.
 
 # Ядро
 pydantic>=2.6
@@ -19,6 +18,9 @@ pgvector>=0.2
 pandas>=2.1
 numpy>=1.26
 catboost>=1.2
+# Модель названий и близость к теме запроса (эмбеддинги bge-m3). Без неё конвейер работает на одном
+# CatBoost, и выдача заметно хуже той, что в отчёте о качестве. torch для процессора ставит Dockerfile.
+sentence-transformers>=2.7
 
 # API и интерфейс
 fastapi>=0.110
