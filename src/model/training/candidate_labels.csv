@@ -927,3 +927,91 @@ blockchain lifecycle,Финтех,too_broad
 cloud gpu cluster,Финтех,mature
 shadow ai,Финтех,off_topic
 decentralized crypto exchange,Финтех,mature
+h200 clusters,Edge,product
+trapped-ion qubits,Edge,off_topic
+sparse backpropagation,Edge,not_a_technology
+dynamic activation quantization,Edge,not_a_technology
+armv9-a architecture,Edge,product
+deformable transformer,Edge,not_a_technology
+tensor masking,Edge,not_a_technology
+leaky integrate-and-fire neuron,Edge,not_a_technology
+hbm3e memory,Edge,product
+tensor core units,Edge,mature
+long-horizon agents,Защита ИИ,off_topic
+homomorphic commitments,Защита ИИ,not_a_technology
+non-interactive zero-knowledge proofs,Защита ИИ,mature
+packed homomorphic encryption,Защита ИИ,not_a_technology
+resilient homomorphic encryption,Защита ИИ,not_a_technology
+multi-scheme fully homomorphic encryption,Защита ИИ,not_a_technology
+blockchain voting protocol,Защита ИИ,off_topic
+hierarchical residual fusion,Защита ИИ,not_a_technology
+defensive distillation,Защита ИИ,not_a_technology
+medical image watermarking,Защита ИИ,off_topic
+prototype-based htfl,Защита ИИ,not_a_technology
+solar-powered data centers,Защита ИИ,off_topic
+digital twin-based beamforming,Индустриальный ИИ,off_topic
+soft actor-critic reinforcement learning,Индустриальный ИИ,not_a_technology
+denoising diffusion model,Индустриальный ИИ,not_a_technology
+physics-informed neural solvers,Индустриальный ИИ,not_a_technology
+randomized numerical linear algebra,Индустриальный ИИ,not_a_technology
+biological artificial intelligence,Индустриальный ИИ,not_a_technology
+digital twin channel,Индустриальный ИИ,off_topic
+quantum transfer learning,Индустриальный ИИ,not_a_technology
+zero-day botnet attack detection,Индустриальный ИИ,off_topic
+robotic subretinal injection,Индустриальный ИИ,off_topic
+cardiac digital twins,Индустриальный ИИ,off_topic
+medical digital twins,Индустриальный ИИ,off_topic
+perturbation generation network,Индустриальный ИИ,not_a_technology
+sobolev training,Индустриальный ИИ,not_a_technology
+action-specific deep recurrent q-network,Индустриальный ИИ,not_a_technology
+tensor core kernels,Инфраструктура ИИ,not_a_technology
+domain-specific neuron activation,Инфраструктура ИИ,not_a_technology
+leaky integrate-and-fire neurons,Инфраструктура ИИ,not_a_technology
+tensor cores acceleration,Инфраструктура ИИ,mature
+neural surface reconstruction,Инфраструктура ИИ,off_topic
+pruned capsule networks,Инфраструктура ИИ,not_a_technology
+tensor core architecture,Инфраструктура ИИ,mature
+composable agents,Роботы,off_topic
+semantic digital twin,Роботы,not_a_technology
+cross-chain arbitrage,Финтех,not_a_technology
+quantum enhanced digital signatures,Финтех,not_a_technology
+masked face reconstruction,Финтех,off_topic
+token mixer,Финтех,not_a_technology
+color qr-code,Финтех,mature
+smart optical biosensors,Финтех,off_topic
+trapped-ion processors,Финтех,off_topic
+silicon spin qubits,Финтех,off_topic
+isogeny-based digital signature,Финтех,not_a_technology
+non-atomic arbitrage,Финтех,not_a_technology
+ternary quantization,Финтех,not_a_technology
+quantum-enhanced digital signatures,Финтех,not_a_technology
+layer-2 blockchain,Финтех,mature
+mixed-mode in-memory computing,Edge,weak_signal
+diffractive optical processor,Edge,weak_signal
+federated tinyml,Edge,weak_signal
+gaussian splatting watermarking,Защита ИИ,weak_signal
+ai-generated image watermarking,Защита ИИ,weak_signal
+homomorphic encrypted inference,Защита ИИ,weak_signal
+watermarking for ai-generated images,Защита ИИ,weak_signal
+deep neural network watermarking,Защита ИИ,weak_signal
+federated model ownership verification,Защита ИИ,weak_signal
+silicon-photonic tensor core,Инфраструктура ИИ,weak_signal
+hfo2-based ferroelectric memories,Инфраструктура ИИ,weak_signal
+compute-in-memory neural accelerator,Инфраструктура ИИ,weak_signal
+in-sensor-memory computing,Инфраструктура ИИ,weak_signal
+silicon photonic tensor core,Инфраструктура ИИ,weak_signal
+photonic transformer accelerator,Инфраструктура ИИ,weak_signal
+adc-less in-memory computing,Инфраструктура ИИ,weak_signal
+soft morphing wing,Роботы,weak_signal
+supramolecular artificial muscles,Роботы,weak_signal
+carbon nanotube artificial muscle,Роботы,weak_signal
+jet-powered humanoid robots,Роботы,weak_signal
+dielectric elastomer artificial muscle,Роботы,weak_signal
+fiber-type artificial muscles,Роботы,weak_signal
+supramolecular robotics,Роботы,weak_signal
+hydrogel muscle,Роботы,weak_signal
+liquid metal photothermal actuator,Роботы,weak_signal
+hydrogel-based soft robots,Роботы,weak_signal
+artificial muscle fiber,Роботы,weak_signal
+data asset pledge financing,Финтех,weak_signal
+ai trading agent,Финтех,weak_signal
