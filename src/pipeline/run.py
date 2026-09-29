@@ -198,7 +198,8 @@ async def run(
 
 async def _drop_off_topic(query: str, scored: list[ScoredCandidate], result: SearchResult) -> list[ScoredCandidate]:
     """Убрать из верха списка чужую область, а затем то, что не технология; всё — в отсеянные с причиной."""
-    decisions = await _with_budget("check_topic", llm_budget(TOPIC_BUDGET_S), off_topic(query, scored), default=[])
+    # Проверка темы спрашивает модель дважды (прямой и обратный порядок списка) — бюджет двойной.
+    decisions = await _with_budget("check_topic", llm_budget(2 * TOPIC_BUDGET_S), off_topic(query, scored), default=[])
     scored = _without(scored, decisions, result)
     if get_settings().check_technology:
         decisions = await _with_budget(
