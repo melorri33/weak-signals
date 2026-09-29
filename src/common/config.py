@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     check_technology: bool = True
     # Поправки к ранжированию по эмбеддингам (src/model/relevance.py): вес близости к теме запроса
     # (0 — выключить) и порог почти-дубля по смыслу названий (1 — выключить).
-    topic_relevance_weight: float = 0.3
+    topic_relevance_weight: float = 0.6
     near_duplicate_threshold: float = 0.85
 
     # Эмбеддинги

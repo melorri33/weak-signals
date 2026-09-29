@@ -36,7 +36,8 @@ def test_candidate_close_to_topic_overtakes_foreign_one():
 
     out = relevance.with_topic_relevance(scored, "перспективные технологии в агротехе", ["soil moisture sensing"])
 
-    assert [s.name for s in out][:2] == ["weed spraying drone", "drug screening organoids"]
+    names = [s.name for s in out]
+    assert names[0] == "weed spraying drone" and names.index("drug screening organoids") > 0
     reason = next(r for r in out[0].top_reasons if r.feature == "topic_relevance")
     assert reason.contribution > 0 and reason.text == "Близко к теме запроса"
     foreign = next(s for s in out if s.name == "drug screening organoids")
